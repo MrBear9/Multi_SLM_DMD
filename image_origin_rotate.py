@@ -29,34 +29,54 @@ def rotate_images(input_dir, output_dir, angle=45):
     processed_count = 0
     for image_file in image_files:
         try:
-            img = cv2.imread(str(image_file))
+            # 保留原图的通道数和位深。默认的 cv2.imread() 会把灰度图
+            # 强制读取成三通道 BGR，导致输出 PNG 被识别为 RGB。
+            img = cv2.imread(str(image_file), cv2.IMREAD_UNCHANGED)
             if img is None:
                 print(f"无法读取图片: {image_file}")
                 continue
 
             h, w = img.shape[:2]
-            center = (w // 2, h // 2)
+            normalized_angle = float(angle) % 360.0
 
-            rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+            # 90° 的整数倍旋转不需要仿射变换，可以完全保留相位图的
+            # 每个灰度值、单通道模式和位深，也不会产生插值灰度。
+            if np.isclose(normalized_angle, 0.0):
+                rotated_img = img.copy()
+            elif np.isclose(normalized_angle, 90.0):
+                rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            elif np.isclose(normalized_angle, 180.0):
+                rotated_img = cv2.rotate(img, cv2.ROTATE_180)
+            elif np.isclose(normalized_angle, 270.0):
+                rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            else:
+                center = (w / 2.0, h / 2.0)
+                rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
 
-            cos_val = np.abs(rotation_matrix[0, 0])
-            sin_val = np.abs(rotation_matrix[0, 1])
+                cos_val = np.abs(rotation_matrix[0, 0])
+                sin_val = np.abs(rotation_matrix[0, 1])
+                new_w = int(np.ceil((h * sin_val) + (w * cos_val)))
+                new_h = int(np.ceil((h * cos_val) + (w * sin_val)))
 
-            new_w = int((h * sin_val) + (w * cos_val))
-            new_h = int((h * cos_val) + (w * sin_val))
+                rotation_matrix[0, 2] += (new_w / 2.0) - center[0]
+                rotation_matrix[1, 2] += (new_h / 2.0) - center[1]
 
-            rotation_matrix[0, 2] += (new_w / 2) - center[0]
-            rotation_matrix[1, 2] += (new_h / 2) - center[1]
+                rotated_img = cv2.warpAffine(
+                    img,
+                    rotation_matrix,
+                    (new_w, new_h),
+                    flags=cv2.INTER_NEAREST,
+                    borderMode=cv2.BORDER_CONSTANT,
+                    borderValue=0,
+                )
 
-            rotated_img = cv2.warpAffine(img, rotation_matrix, (new_w, new_h),
-                                         borderMode=cv2.BORDER_CONSTANT,
-                                         borderValue=(0, 0, 0))
-
-            output_filename = f"{image_file.stem}_rotated{image_file.suffix}"
+            output_filename = f"{image_file.stem}{image_file.suffix}"
             output_path = os.path.join(output_dir, output_filename)
 
-            cv2.imwrite(output_path, rotated_img)
+            if not cv2.imwrite(output_path, rotated_img):
+                raise OSError(f"无法写入图片: {output_path}")
             processed_count += 1
+            new_h, new_w = rotated_img.shape[:2]
             print(f"处理完成: {image_file.name} -> {output_filename} "
                   f"(旋转角度: {angle}°, 原始尺寸: {w}×{h}, 新尺寸: {new_w}×{new_h})")
 
@@ -73,8 +93,8 @@ def batch_rotate_images(angle=45):
     :param angle: 旋转角度（度），正值为逆时针旋转
     """
     base_dir = Path(__file__).parent
-    input_dir = base_dir / "slm2"
-    output_dir = base_dir / "slm2_rotated"
+    input_dir = base_dir / "input"
+    output_dir = base_dir / "input_rotated"
 
     if not input_dir.exists():
         print(f"错误：输入目录不存在: {input_dir}")
@@ -90,4 +110,4 @@ def batch_rotate_images(angle=45):
 
 
 if __name__ == "__main__":
-    batch_rotate_images(90)
+    batch_rotate_images(-90)

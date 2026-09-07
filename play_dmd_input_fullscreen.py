@@ -106,8 +106,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--monitor",
         type=int,
-        default=0,
-        help="Zero-based target monitor index reported by --list-monitors (default: 0).",
+        default=1,
+        help="Zero-based target monitor index reported by --list-monitors (default: 1).",
     )
     parser.add_argument(
         "--start-id",

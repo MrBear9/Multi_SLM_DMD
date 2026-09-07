@@ -3,12 +3,15 @@
 SLM1 is driven by the Zhongke Weixing SDK and reads ``tools/slm1`` by
 default. SLM2 is the 8-bit MagicHolo HDSLM45R and reads ``tools/slm2`` by
 default. Files are paired by filename stem, displayed without interpolation,
-and advanced together at one shared interval.
+and advanced together at one shared interval.  By default, both SDK windows
+are opened first and the first phase pair is not sent until Space is pressed
+in the terminal.
 """
 
 from __future__ import annotations
 
 import argparse
+import msvcrt
 import time
 from pathlib import Path
 
@@ -128,6 +131,11 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Detect devices and validate both image sequences without opening either SLM.",
+    )
+    parser.add_argument(
+        "--auto-start",
+        action="store_true",
+        help="Start immediately after opening both SDK windows instead of waiting for Space.",
     )
     return parser.parse_args()
 
@@ -266,6 +274,52 @@ def print_selection(
     print(f"MagicHolo selection: {magicholo_reason}.")
 
 
+def read_console_key() -> str | None:
+    """Read one Windows console key without blocking; ignore navigation keys."""
+    if not msvcrt.kbhit():
+        return None
+    key = msvcrt.getwch()
+    if key in {"\x00", "\xe0"}:
+        if msvcrt.kbhit():
+            msvcrt.getwch()
+        return None
+    return key
+
+
+def wait_for_space(message: str) -> None:
+    """Keep both SDK windows responsive until Space; Esc stops playback."""
+    print(message, flush=True)
+    while True:
+        magicholo.pump_window_messages()
+        key = read_console_key()
+        if key == " ":
+            return
+        if key == "\x1b":
+            raise KeyboardInterrupt
+        time.sleep(0.01)
+
+
+def wait_interval_with_controls(seconds: float) -> None:
+    """Wait one shared interval while Space toggles pause/resume."""
+    deadline = time.monotonic() + seconds
+    while True:
+        magicholo.pump_window_messages()
+        now = time.monotonic()
+        remaining = deadline - now
+        if remaining <= 0:
+            return
+        key = read_console_key()
+        if key == " ":
+            wait_for_space(
+                "Playback paused. Press Space in this terminal to continue; Esc stops."
+            )
+            print("Playback resumed.", flush=True)
+            deadline = time.monotonic() + remaining
+        elif key == "\x1b":
+            raise KeyboardInterrupt
+        time.sleep(min(0.01, remaining))
+
+
 def main() -> None:
     args = parse_args()
     if args.interval <= 0:
@@ -349,7 +403,14 @@ def main() -> None:
         zkwx_sdk = zkwx.ZhongkeTimeoutSDK(zkwx_sdk_dir)
         zkwx_sdk.open()
         magicholo_sdk.open(magicholo_display.index)
-        print("Both SLM windows opened. Press Ctrl+C in this terminal to stop.")
+        print("Both SLM windows opened. Press Ctrl+C or Esc in this terminal to stop.")
+        if args.auto_start:
+            print("Automatic start enabled; sending the first phase pair now.")
+        else:
+            wait_for_space(
+                "Ready: press Space in this terminal to display the first phase pair."
+            )
+            print("Playback started.", flush=True)
 
         while True:
             for index, (zkwx_path, magicholo_path) in enumerate(pairs, start=1):
@@ -383,7 +444,7 @@ def main() -> None:
                 is_final = index == len(pairs)
                 if args.loop or args.close_after or not is_final:
                     elapsed = time.monotonic() - pair_started
-                    magicholo.wait_with_messages(max(0.0, args.interval - elapsed))
+                    wait_interval_with_controls(max(0.0, args.interval - elapsed))
             if not args.loop:
                 break
 

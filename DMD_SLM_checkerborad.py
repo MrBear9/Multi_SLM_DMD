@@ -1,10 +1,17 @@
-"""Generate physically registered DMD/SLM alignment patterns.
+"""Generate physically registered alignment packages for the two bench PCs.
 
 The three devices do not have the same pixel pitch. Their patterns therefore
 use different pixel shapes while covering the same DMD aperture and containing
 the same number of physical checkerboard cells. SLM sizes are derived only
 from ``models.SLM.physical_defaults`` hardware pitches; empirical numerical
 sampling pitches are not used to size hardware images.
+
+The current bench uses two computers:
+
+* ``dmd_camera_pc`` contains only DMD patterns. The camera is connected to the
+  same computer but does not require a generated display pattern.
+* ``dual_slm_pc/slm1`` and ``dual_slm_pc/slm2`` contain same-named phase pairs
+  that can be passed directly to ``tools/play_dual_slms.py``.
 """
 
 from __future__ import annotations
@@ -32,7 +39,9 @@ from models.SLM.physical_defaults import (
 )
 
 
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "Optical_yolo_detect" / "DMD_SLM_checkerborad"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" / "DMD_SLM_checkerborad"
+DMD_PC_DIRNAME = "dmd_camera_pc"
+DUAL_SLM_PC_DIRNAME = "dual_slm_pc"
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,6 +56,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help="Output directory for alignment PNGs and metadata.",
+    )
+    parser.add_argument(
+        "--target",
+        choices=("all", "dmd", "slms"),
+        default="all",
+        help=(
+            "Which computer package to generate: all, dmd (DMD/camera PC), "
+            "or slms (dual-SLM PC). Default: all."
+        ),
     )
     parser.add_argument(
         "--blocks-y",
@@ -178,17 +196,24 @@ def main() -> None:
         shape_hw = active_pixel_shape(profile_name, dmd_aperture)
         slm_layers.append((layer_index, profile_name, profile, shape_hw))
 
+    generate_dmd = args.target in ("all", "dmd")
+    generate_slms = args.target in ("all", "slms")
+    dmd_dir = output_dir / DMD_PC_DIRNAME
+    dual_slm_dir = output_dir / DUAL_SLM_PC_DIRNAME
+
     dmd_files = {
-        "checkerboard": "dmd_checkerboard.png",
-        "white": "dmd_white.png",
-        "black": "dmd_black.png",
+        "checkerboard": f"{DMD_PC_DIRNAME}/checkerboard.png",
+        "white": f"{DMD_PC_DIRNAME}/white.png",
+        "black": f"{DMD_PC_DIRNAME}/black.png",
     }
-    save_png(
-        output_dir / dmd_files["checkerboard"],
-        physical_checkerboard(dmd_shape, blocks_hw, low=0, high=255),
-    )
-    save_png(output_dir / dmd_files["white"], uniform_image(dmd_shape, 255))
-    save_png(output_dir / dmd_files["black"], uniform_image(dmd_shape, 0))
+    if generate_dmd:
+        dmd_dir.mkdir(parents=True, exist_ok=True)
+        save_png(
+            output_dir / dmd_files["checkerboard"],
+            physical_checkerboard(dmd_shape, blocks_hw, low=0, high=255),
+        )
+        save_png(output_dir / dmd_files["white"], uniform_image(dmd_shape, 255))
+        save_png(output_dir / dmd_files["black"], uniform_image(dmd_shape, 0))
 
     devices = [
         device_metadata(
@@ -200,24 +225,28 @@ def main() -> None:
         )
     ]
     for layer_index, profile_name, profile, shape_hw in slm_layers:
-        prefix = f"slm{layer_index}"
+        relative_dir = f"{DUAL_SLM_PC_DIRNAME}/slm{layer_index}"
         files = {
-            "phase_checkerboard": f"{prefix}_phase_checkerboard.png",
-            "uniform_phase": f"{prefix}_uniform_phase.png",
+            # Identical basenames across both folders allow direct pairing by
+            # tools/play_dual_slms.py.
+            "phase_checkerboard": f"{relative_dir}/checkerboard.png",
+            "uniform_phase": f"{relative_dir}/uniform.png",
         }
-        save_png(
-            output_dir / files["phase_checkerboard"],
-            physical_checkerboard(
-                shape_hw,
-                blocks_hw,
-                low=args.slm_phase_low,
-                high=args.slm_phase_high,
-            ),
-        )
-        save_png(
-            output_dir / files["uniform_phase"],
-            uniform_image(shape_hw, args.slm_phase_low),
-        )
+        if generate_slms:
+            (output_dir / relative_dir).mkdir(parents=True, exist_ok=True)
+            save_png(
+                output_dir / files["phase_checkerboard"],
+                physical_checkerboard(
+                    shape_hw,
+                    blocks_hw,
+                    low=args.slm_phase_low,
+                    high=args.slm_phase_high,
+                ),
+            )
+            save_png(
+                output_dir / files["uniform_phase"],
+                uniform_image(shape_hw, args.slm_phase_low),
+            )
         devices.append(
             device_metadata(
                 f"SLM{layer_index}",
@@ -231,6 +260,22 @@ def main() -> None:
         )
 
     metadata = {
+        "layout_version": 2,
+        "generated_target": args.target,
+        "computer_layout": {
+            "dmd_camera_pc": {
+                "directory": DMD_PC_DIRNAME,
+                "devices": ["DMD", "camera"],
+                "note": "Only the DMD needs a generated pattern; the camera captures the result.",
+            },
+            "dual_slm_pc": {
+                "directory": DUAL_SLM_PC_DIRNAME,
+                "devices": ["SLM1", "SLM2"],
+                "slm1_directory": f"{DUAL_SLM_PC_DIRNAME}/slm1",
+                "slm2_directory": f"{DUAL_SLM_PC_DIRNAME}/slm2",
+                "note": "Same-named files form one synchronized SLM phase pair.",
+            },
+        },
         "reference_aperture_hw_m": list(dmd_aperture),
         "reference_aperture_hw_mm": [value * 1e3 for value in dmd_aperture],
         "checkerboard_cells_hw": list(blocks_hw),
@@ -250,6 +295,17 @@ def main() -> None:
             "These SLM PNGs are active-region rasters. Display them at 1:1 hardware pixels and "
             "centre the active region on the physical panel; do not stretch them to the panel resolution."
         ),
+        "launch_examples": {
+            "dmd_camera_pc": (
+                "python tools/play_dmd_input_fullscreen.py --input "
+                f"{DMD_PC_DIRNAME} --monitor <DMD_MONITOR>"
+            ),
+            "dual_slm_pc_checkerboard": (
+                "python tools/play_dual_slms.py --zkwx-input "
+                f"{DUAL_SLM_PC_DIRNAME}/slm1/checkerboard.png --magicholo-input "
+                f"{DUAL_SLM_PC_DIRNAME}/slm2/checkerboard.png"
+            ),
+        },
         "devices": devices,
     }
     metadata_path = output_dir / "alignment_geometry.json"
@@ -269,16 +325,29 @@ def main() -> None:
             f"{float(profile['hardware_pixel_pitch']) * 1e6:.1f} um ({profile_name})"
         )
     print(f"Physical checkerboard: {args.blocks_y} x {args.blocks_x} cells")
-    print(f"Saved alignment patterns to: {output_dir}")
+    print("Computer layout: DMD + camera on PC 1; SLM1 + SLM2 on PC 2")
+    if generate_dmd:
+        print(f"DMD/camera PC package: {dmd_dir}")
+    if generate_slms:
+        print(f"Dual-SLM PC package:   {dual_slm_dir}")
+        print(f"  SLM1 input: {dual_slm_dir / 'slm1'}")
+        print(f"  SLM2 input: {dual_slm_dir / 'slm2'}")
     print(f"Geometry metadata: {metadata_path}")
     legacy_files = [
+        output_dir / "dmd_checkerboard.png",
+        output_dir / "dmd_white.png",
+        output_dir / "dmd_black.png",
+        output_dir / "slm1_phase_checkerboard.png",
+        output_dir / "slm1_uniform_phase.png",
+        output_dir / "slm2_phase_checkerboard.png",
+        output_dir / "slm2_uniform_phase.png",
         output_dir / "slm_phase_checkerboard.png",
         output_dir / "slm_uniform_phase.png",
     ]
     if any(path.exists() for path in legacy_files):
         print(
-            "WARNING: old ambiguous 640x640 SLM files still exist; "
-            "do not load them onto either current SLM."
+            "WARNING: old flat-layout alignment files still exist in the output root; "
+            "use only dmd_camera_pc/ and dual_slm_pc/ from the new layout."
         )
 
 
