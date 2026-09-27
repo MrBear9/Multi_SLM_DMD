@@ -9,17 +9,16 @@ in the terminal.
 """
 
 from __future__ import annotations
-
 import argparse
 import msvcrt
 import time
 from pathlib import Path
+from ..devices.magicholo_slm import controller as magicholo
+from ..devices.zkwx_slm import controller as zkwx
+from ..utils.paths import PROJECT_ROOT
+from ..utils.paths import resolve_path
 
-import play_magicholo_slm2 as magicholo
-import play_zkwx_slm1 as zkwx
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ZKWX_INPUT = PROJECT_ROOT / "tools" / "slm1"
 DEFAULT_MAGICHolo_INPUT = PROJECT_ROOT / "tools" / "slm2"
 ZKWX_DISPATCH_TIMEOUT_MS = 16
@@ -138,10 +137,6 @@ def parse_args() -> argparse.Namespace:
         help="Start immediately after opening both SDK windows instead of waiting for Space.",
     )
     return parser.parse_args()
-
-
-def resolve_path(path: Path) -> Path:
-    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
 def same_monitor(left: int, top: int, width: int, height: int, display: magicholo.SDKDisplay) -> bool:

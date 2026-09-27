@@ -2,6 +2,48 @@
 
 本文对应 `tools` 中现有脚本，说明 DMD 输入、双 SLM 相位显示、DVP2 相机采集与 CCD 图像整理流程。命令参数按源码核对，未在本次文档编写中连接或测试硬件。
 
+## 代码结构与开发约定
+
+本次重构移除了根目录旧脚本，不提供兼容入口。请在项目根目录用 `python -m tools.<目录>.<模块>` 运行下文命令，不要直接执行包内文件。
+
+```text
+tools/
+  apps/                     # 参数解析、预览及多设备运行流程
+  devices/
+    zkwx_slm/               # 中科微兴 SLM1
+      sdk.py                # ctypes 绑定、设备枚举及底层控制
+      controller.py         # 图像校验、显示选择等业务操作
+    magicholo_slm/           # MagicHolo SLM2，同样分 sdk / controller
+    dvp2_camera/            # DVP2 相机，同样分 sdk / controller
+    dmd_display/
+      controller.py         # Tkinter 全屏显示、显示器枚举
+  processing/               # 棋盘格生成、CCD 视频校正、图像旋转
+  utils/
+    paths.py                # 项目、tools、SDK 根路径与路径解析
+    images.py               # 数字文件名排序
+  tests/                    # 不连接硬件的回归测试
+  3rdparty/                 # 厂商原始库，禁止修改
+```
+
+新增硬件请放到 `devices/<硬件名称>/`，厂商接口放在 `sdk.py`，图像处理及设备操作放在 `controller.py`；命令行和多设备编排放在 `apps`。公共函数放在 `utils`。硬件库不依赖应用入口，导入 SDK 模块不会加载 DLL 或连接设备；实例化 SDK 时才加载 DLL。
+
+复用示例（从项目根目录运行）：
+
+```python
+from tools.devices.zkwx_slm import ZhongkeTimeoutSDK
+from tools.devices.magicholo_slm import HDSLM8BitSDK
+from tools.devices.dvp2_camera import DvpApi, CameraSession
+from tools.utils.paths import THIRD_PARTY_ROOT
+```
+
+SDK 默认位置、输入输出目录及命令参数保持原来的含义。旋转工具仍默认处理 `tools/input`，写入 `tools/input_rotated`。棋盘格工具改名为 `processing/generate_alignment_patterns.py`。
+
+无硬件回归检查：
+
+```powershell
+python -m unittest discover -s tools/tests -v
+```
+
 ## 1. 系统组成与职责
 
 ```text
@@ -17,11 +59,11 @@
 
 | 部件 | 项目配置/角色 | 显示或采集工具 |
 | --- | --- | --- |
-| DMD | 640×640 输入，硬件像元 5.4 μm | `play_dmd_input_fullscreen.py` |
-| SLM1 | 中科微兴，硬件像元 8.0 μm，有效区 432×432 | `play_zkwx_slm1.py` |
-| SLM2 | MagicHolo HDSLM45R，硬件像元 4.5 μm，有效区 768×768；脚本按 1920×1080 面板处理 | `play_magicholo_slm2.py` |
-| 双 SLM | 同名相位对联动播放 | `play_dual_slms.py` |
-| 相机 | DVP2 SDK 支持的工业相机，设备型号以枚举结果为准 | `control_dvp2_camera.py` |
+| DMD | 640×640 输入，硬件像元 5.4 μm | `apps/play_dmd_input_fullscreen.py` |
+| SLM1 | 中科微兴，硬件像元 8.0 μm，有效区 432×432 | `apps/play_zkwx_slm1.py` |
+| SLM2 | MagicHolo HDSLM45R，硬件像元 4.5 μm，有效区 768×768；脚本按 1920×1080 面板处理 | `apps/play_magicholo_slm2.py` |
+| 双 SLM | 同名相位对联动播放 | `apps/play_dual_slms.py` |
+| 相机 | DVP2 SDK 支持的工业相机，设备型号以枚举结果为准 | `apps/control_dvp2_camera.py` |
 
 三块调制设备的有效宽度均为 3.456 mm。当前项目数值传播使用 13.0 μm / 6.4 μm 的有效采样和 0.20 m / 0.10 m 的传播距离，波长为 532 nm；这些是模型配置，不能替代实测标定。尤其不能用数值采样间隔计算硬件图案尺寸。
 
@@ -31,17 +73,17 @@
 
 | 脚本 | 用途 |
 | --- | --- |
-| `DMD_SLM_checkerborad.py` | 生成两台电脑使用的棋盘格、对准图案及物理几何元数据；文件名中的 `checkerborad` 是现有拼写 |
-| `play_zkwx_slm1.py` | 通过中科微兴 SDK 显示单图或相位序列 |
-| `play_magicholo_slm2.py` | 通过 HDSLM SDK 显示 8 bit BMP/PNG，支持有效区平移 |
-| `play_dual_slms.py` | 按文件名主干配对两片 SLM，并按共同间隔推进 |
-| `play_dmd_input_fullscreen.py` | 将 DMD 图像按原始像素居中全屏显示 |
-| `control_dvp2_camera.py` | 枚举相机、预览、PNG 拍照、AVI 录像、曝光及 ROI 配置 |
-| `play_dmd_with_dvp2_camera.py` | DMD 播放后等待稳定，再采集对应相机帧并保存同名 PNG |
-| `capture_ccd_video_frames.py` | 从录像中交互选区、透视校正并逐样本保存 CCD 光强 |
-| `image_origin_rotate.py` | 旋转图像并保留通道与位深；不是相机配准或标签变换工具 |
+| `processing/generate_alignment_patterns.py` | 生成两台电脑使用的棋盘格、对准图案及物理几何元数据 |
+| `apps/play_zkwx_slm1.py` | 通过中科微兴 SDK 显示单图或相位序列 |
+| `apps/play_magicholo_slm2.py` | 通过 HDSLM SDK 显示 8 bit BMP/PNG，支持有效区平移 |
+| `apps/play_dual_slms.py` | 按文件名主干配对两片 SLM，并按共同间隔推进 |
+| `apps/play_dmd_input_fullscreen.py` | 将 DMD 图像按原始像素居中全屏显示 |
+| `apps/control_dvp2_camera.py` | 枚举相机、预览、PNG 拍照、AVI 录像、曝光及 ROI 配置 |
+| `apps/play_dmd_with_dvp2_camera.py` | DMD 播放后等待稳定，再采集对应相机帧并保存同名 PNG |
+| `processing/capture_ccd_video_frames.py` | 从录像中交互选区、透视校正并逐样本保存 CCD 光强 |
+| `processing/image_origin_rotate.py` | 旋转图像并保留通道与位深；不是相机配准或标签变换工具 |
 
-`src` 中的脚本负责模型相位导出和检测评估；本目录主要负责硬件播放与数据采集。
+主项目根目录的 `src` 中的脚本负责模型相位导出和检测评估；本目录主要负责硬件播放与数据采集。
 
 ## 3. 环境与 SDK
 
@@ -72,16 +114,16 @@ SDK 控制脚本面向 Windows，使用与 DLL 匹配的 64 位 Python。实际�
 在各设备所在电脑运行对应命令：
 
 ```powershell
-python tools/play_dmd_input_fullscreen.py --list-monitors
-python tools/control_dvp2_camera.py --list
-python tools/play_dual_slms.py --list-devices
+python -m tools.apps.play_dmd_input_fullscreen --list-monitors
+python -m tools.apps.control_dvp2_camera --list
+python -m tools.apps.play_dual_slms --list-devices
 ```
 
 也可单独枚举 SLM：
 
 ```powershell
-python tools/play_zkwx_slm1.py --list-monitors
-python tools/play_magicholo_slm2.py --list-displays
+python -m tools.apps.play_zkwx_slm1 --list-monitors
+python -m tools.apps.play_magicholo_slm2 --list-displays
 ```
 
 显示器编号会受接线和系统设置影响。下面示例的 DMD `--monitor 1` 只是示例，应替换为枚举得到的索引。纯 DMD 播放默认索引为 1，DMD+相机脚本默认索引为 0，因此实验时建议显式指定。
@@ -89,7 +131,7 @@ python tools/play_magicholo_slm2.py --list-displays
 ### 4.2 生成对准包
 
 ```powershell
-python tools/DMD_SLM_checkerborad.py --output output/alignment --target all --blocks-y 10 --blocks-x 10
+python -m tools.processing.generate_alignment_patterns --output output/alignment --target all --blocks-y 10 --blocks-x 10
 ```
 
 输出目录结构：
@@ -106,9 +148,9 @@ output/alignment/
 `--target dmd` 或 `--target slms` 可仅生成对应设备包。默认 SLM 棋盘格灰度为 0 和 128；128 只在理想线性 0～2π 响应下约对应 π，真实平台应根据实测灰度—相位 LUT 选择。
 
 ```powershell
-python tools/play_dual_slms.py --zkwx-input output/alignment/dual_slm_pc/slm1/checkerboard.png --magicholo-input output/alignment/dual_slm_pc/slm2/checkerboard.png --dry-run
-python tools/play_dual_slms.py --zkwx-input output/alignment/dual_slm_pc/slm1/checkerboard.png --magicholo-input output/alignment/dual_slm_pc/slm2/checkerboard.png
-python tools/play_dmd_input_fullscreen.py --input output/alignment/dmd_camera_pc --monitor 1
+python -m tools.apps.play_dual_slms --zkwx-input output/alignment/dual_slm_pc/slm1/checkerboard.png --magicholo-input output/alignment/dual_slm_pc/slm2/checkerboard.png --dry-run
+python -m tools.apps.play_dual_slms --zkwx-input output/alignment/dual_slm_pc/slm1/checkerboard.png --magicholo-input output/alignment/dual_slm_pc/slm2/checkerboard.png
+python -m tools.apps.play_dmd_input_fullscreen --input output/alignment/dmd_camera_pc --monitor 1
 ```
 
 双片工具默认打开窗口后等待在终端按 Space 才发送首对相位。需要保持某个对准图案时使用单图输入；目录输入会按序播放多个图案。
@@ -129,8 +171,8 @@ tools/slm1/0002.png    tools/slm2/0002.png
 ```
 
 ```powershell
-python tools/play_dual_slms.py --zkwx-input tools/slm1 --magicholo-input tools/slm2 --dry-run
-python tools/play_dual_slms.py --zkwx-input tools/slm1 --magicholo-input tools/slm2 --interval 5
+python -m tools.apps.play_dual_slms --zkwx-input tools/slm1 --magicholo-input tools/slm2 --dry-run
+python -m tools.apps.play_dual_slms --zkwx-input tools/slm1 --magicholo-input tools/slm2 --interval 5
 ```
 
 | 参数 | 含义 |
@@ -149,8 +191,8 @@ python tools/play_dual_slms.py --zkwx-input tools/slm1 --magicholo-input tools/s
 单片排查可用：
 
 ```powershell
-python tools/play_zkwx_slm1.py --input tools/slm1 --interval 5
-python tools/play_magicholo_slm2.py --input tools/slm2 --interval 5
+python -m tools.apps.play_zkwx_slm1 --input tools/slm1 --interval 5
+python -m tools.apps.play_magicholo_slm2 --input tools/slm2 --interval 5
 ```
 
 MagicHolo 输入限制为 8 bit BMP/PNG。中科微兴支持更多格式，但实验相位建议用无损 PNG/BMP，避免 JPEG 改变灰度值。
@@ -162,9 +204,9 @@ MagicHolo 输入限制为 8 bit BMP/PNG。中科微兴支持更多格式，但�
 ### 6.1 单独预览与记录
 
 ```powershell
-python tools/control_dvp2_camera.py --camera 0 --output output/camera_check --manual-exposure
-python tools/control_dvp2_camera.py --camera 0 --output output/camera_check --manual-exposure --capture 10 --capture-interval 1
-python tools/control_dvp2_camera.py --camera 0 --output output/camera_record --record --duration 30
+python -m tools.apps.control_dvp2_camera --camera 0 --output output/camera_check --manual-exposure
+python -m tools.apps.control_dvp2_camera --camera 0 --output output/camera_check --manual-exposure --capture 10 --capture-interval 1
+python -m tools.apps.control_dvp2_camera --camera 0 --output output/camera_record --record --duration 30
 ```
 
 `--manual-exposure` 关闭自动曝光；没有给定 `--exposure-us` 时仍需确认当前曝光值。曝光单位为微秒，`--gain` 为设备模拟增益值，具体范围由设备决定。`--roi X Y W H` 是相机硬件 ROI，需符合设备对齐要求，不等于后处理透视配准。
@@ -176,8 +218,8 @@ python tools/control_dvp2_camera.py --camera 0 --output output/camera_record --r
 准备真实硬件导出目录，下例用 `output/hardware_run/input` 表示输入文件夹：
 
 ```powershell
-python tools/play_dmd_with_dvp2_camera.py --input output/hardware_run/input --output output/hardware_run/ccd_raw --monitor 1 --dry-run
-python tools/play_dmd_with_dvp2_camera.py --input output/hardware_run/input --output output/hardware_run/ccd_raw --monitor 1 --display-seconds 2 --settle-seconds 1 --manual-exposure --require-camera
+python -m tools.apps.play_dmd_with_dvp2_camera --input output/hardware_run/input --output output/hardware_run/ccd_raw --monitor 1 --dry-run
+python -m tools.apps.play_dmd_with_dvp2_camera --input output/hardware_run/input --output output/hardware_run/ccd_raw --monitor 1 --display-seconds 2 --settle-seconds 1 --manual-exposure --require-camera
 ```
 
 默认每张 DMD 图像显示 2 秒，约在切换后 1 秒请求足够新的相机帧；启动时暂停，按窗口中的 Space 开始。保存文件沿用 DMD 文件主干，例如 `0001.png`，并写出 `dvp2_capture_manifest.json`，记录帧 ID、实际采集延迟、曝光、增益和路径。
@@ -191,7 +233,7 @@ python tools/play_dmd_with_dvp2_camera.py --input output/hardware_run/input --ou
 ### 6.3 仅播放 DMD
 
 ```powershell
-python tools/play_dmd_input_fullscreen.py --input output/hardware_run/input --monitor 1 --interval 5
+python -m tools.apps.play_dmd_input_fullscreen --input output/hardware_run/input --monitor 1 --interval 5
 ```
 
 原图按原生像素居中置于黑色画布，不缩放。Space 播放/暂停，左右方向键切图，Home 返回首图，F11 切换置顶，Esc/Q 退出。图像尺寸必须能容纳于目标显示区域。
@@ -199,7 +241,7 @@ python tools/play_dmd_input_fullscreen.py --input output/hardware_run/input --mo
 ## 7. 从录像整理配准后的 CCD 光强
 
 ```powershell
-python tools/capture_ccd_video_frames.py --video output/hardware_run/camera.avi --export-root output/hardware_run --output output/hardware_run/ccd --selection quad --channel green --roi-samples 3
+python -m tools.processing.capture_ccd_video_frames --video output/hardware_run/camera.avi --export-root output/hardware_run --output output/hardware_run/ccd --selection quad --channel green --roi-samples 3
 ```
 
 `--export-root` 应包含导出的 `input/`，有 `manifest.json` 时优先按其样本记录建立顺序。工具在多个较清晰的调制帧上独立选区，汇总并确认 ROI 后重新从采集起点播放，再由用户逐帧确认与导出 ID 对应的光学图像。
@@ -230,7 +272,7 @@ python tools/capture_ccd_video_frames.py --video output/hardware_run/camera.avi 
 
 部分工具默认路径仍指向历史 `Tv2_dmd640_scratch/hardware_export_100`。正式实验显式传入路径，不能因为默认目录能运行就认为检查点和相位匹配。
 
-`image_origin_rotate.py` 没有命令行参数，直接运行会将 `tools/input` 旋转 -90° 后写入 `tools/input_rotated`。90° 整数倍使用无插值旋转；其他角度使用最近邻并扩大画布。它不更新检测标签、配准矩阵或 manifest，因此不能把任意旋转当成已完成的坐标标定。
+`processing/image_origin_rotate.py` 没有命令行参数，直接运行会将 `tools/input` 旋转 -90° 后写入 `tools/input_rotated`。90° 整数倍使用无插值旋转；其他角度使用最近邻并扩大画布。它不更新检测标签、配准矩阵或 manifest，因此不能把任意旋转当成已完成的坐标标定。
 
 ## 9. 常见问题
 

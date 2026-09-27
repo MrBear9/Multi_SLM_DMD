@@ -1,8 +1,10 @@
+"""Rotate image batches while preserving channels and bit depth."""
 
 import cv2
 import numpy as np
 import os
 from pathlib import Path
+from ..utils.paths import TOOLS_ROOT
 
 
 def rotate_images(input_dir, output_dir, angle=45):
@@ -92,7 +94,7 @@ def batch_rotate_images(angle=45):
     批量处理图片：将image_Origin_size目录下的图片旋转指定角度并保存到image_Origin_rotated目录
     :param angle: 旋转角度（度），正值为逆时针旋转
     """
-    base_dir = Path(__file__).parent
+    base_dir = TOOLS_ROOT
     input_dir = base_dir / "input"
     output_dir = base_dir / "input_rotated"
 

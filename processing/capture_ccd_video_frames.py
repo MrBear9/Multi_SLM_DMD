@@ -15,18 +15,17 @@ calibration (or to remove a known fixed black offset).
 """
 
 from __future__ import annotations
-
 import argparse
 import json
 import os
 from pathlib import Path
 from typing import Any
-
 import cv2
 import numpy as np
+from ..utils.paths import PROJECT_ROOT
+from ..utils.paths import resolve_path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXPORT_ROOT = PROJECT_ROOT / "output" / "Tv2_dmd640_scratch" / "hardware_export_100"
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 WINDOW_ROI = "Select CCD optical region"
@@ -164,10 +163,6 @@ def parse_args() -> argparse.Namespace:
         help="Maximum displayed video height in pixels (default: 980).",
     )
     return parser.parse_args()
-
-
-def resolve_path(path: Path) -> Path:
-    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
 def validate_args(args: argparse.Namespace) -> None:

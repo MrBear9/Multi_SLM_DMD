@@ -9,7 +9,6 @@ continues normally and image capture is disabled.
 """
 
 from __future__ import annotations
-
 import argparse
 import json
 import threading
@@ -18,22 +17,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Sequence
-
 import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
+from ..devices.dvp2_camera import controller as dvp2
+from ..devices.dmd_display import controller as dmd
+from ..utils.paths import resolve_path
 
-import control_dvp2_camera as dvp2
-import play_dmd_input_fullscreen as dmd
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = dmd.DEFAULT_INPUT_DIR
 MANIFEST_NAME = "dvp2_capture_manifest.json"
-
-
-def resolve_path(path: Path) -> Path:
-    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
 def collect_images(

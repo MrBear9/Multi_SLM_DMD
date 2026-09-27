@@ -11,24 +11,16 @@ The current bench uses two computers:
 * ``dmd_camera_pc`` contains only DMD patterns. The camera is connected to the
   same computer but does not require a generated display pattern.
 * ``dual_slm_pc/slm1`` and ``dual_slm_pc/slm2`` contain same-named phase pairs
-  that can be passed directly to ``tools/play_dual_slms.py``.
+  that can be passed directly to ``python -m tools.apps.play_dual_slms``.
 """
 
 from __future__ import annotations
-
 import argparse
 import json
-import sys
 from pathlib import Path
-
 import cv2
 import numpy as np
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
+from ..utils.paths import PROJECT_ROOT
 from models.SLM.physical_defaults import (
     DEFAULT_DMD_PIXEL_PITCH,
     DEFAULT_DMD_RESOLUTION,
@@ -228,7 +220,7 @@ def main() -> None:
         relative_dir = f"{DUAL_SLM_PC_DIRNAME}/slm{layer_index}"
         files = {
             # Identical basenames across both folders allow direct pairing by
-            # tools/play_dual_slms.py.
+            # python -m tools.apps.play_dual_slms.
             "phase_checkerboard": f"{relative_dir}/checkerboard.png",
             "uniform_phase": f"{relative_dir}/uniform.png",
         }
@@ -297,11 +289,11 @@ def main() -> None:
         ),
         "launch_examples": {
             "dmd_camera_pc": (
-                "python tools/play_dmd_input_fullscreen.py --input "
+                "python -m tools.apps.play_dmd_input_fullscreen --input "
                 f"{DMD_PC_DIRNAME} --monitor <DMD_MONITOR>"
             ),
             "dual_slm_pc_checkerboard": (
-                "python tools/play_dual_slms.py --zkwx-input "
+                "python -m tools.apps.play_dual_slms --zkwx-input "
                 f"{DUAL_SLM_PC_DIRNAME}/slm1/checkerboard.png --magicholo-input "
                 f"{DUAL_SLM_PC_DIRNAME}/slm2/checkerboard.png"
             ),
