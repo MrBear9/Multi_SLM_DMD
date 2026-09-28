@@ -161,7 +161,17 @@ class DvpApi:
                 f"Unable to load DVP2 DLL: {dll_path}. Install the DVP2 camera "
                 "driver/runtime and confirm that 64-bit dependencies are available."
             ) from exc
-        self._bind()
+        try:
+            self._bind()
+        except Exception:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        """Release the DLL search directory after all camera sessions close."""
+        if self._dll_dir_handle is not None:
+            self._dll_dir_handle.close()
+            self._dll_dir_handle = None
 
     def _bind(self) -> None:
         dll = self.dll

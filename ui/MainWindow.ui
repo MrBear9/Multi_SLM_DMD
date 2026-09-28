@@ -1,0 +1,3389 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1440</width>
+    <height>1020</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1120</width>
+    <height>800</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>光学实验控制台 · DMD / SLM / CCD</string>
+  </property>
+  <property name="styleSheet">
+   <string>
+QMainWindow, QWidget#centralWidget { background: #f3f6fb; }
+QWidget { font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; font-size: 12px; color: #26354b; }
+QLabel#titleLabel { font-size: 24px; font-weight: 600; color: #13243b; }
+QLabel#subtitleLabel, QLabel#sessionHintLabel, QLabel#previewHintLabel { color: #687b92; }
+QLabel#connectionStateLabel { color: #62758d; background: #e6ecf5; border-radius: 12px; padding: 8px 14px; }
+QTabWidget::pane { border: 1px solid #d9e2ed; background: #f8fafc; border-radius: 8px; }
+QTabBar::tab { background: #e8eef6; color: #60728b; padding: 12px 30px; margin-right: 6px; border-top-left-radius: 7px; border-top-right-radius: 7px; font-weight: 600; }
+QTabBar::tab:selected { background: #ffffff; color: #2468d4; border-bottom: 3px solid #3478ed; }
+QGroupBox { background: #ffffff; border: 1px solid #dbe3ef; border-radius: 8px; margin-top: 14px; padding: 14px 10px 10px 10px; font-weight: 600; }
+QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 6px; color: #274569; }
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #fbfcff; border: 1px solid #ccd7e5; border-radius: 5px; padding: 5px 8px; min-height: 20px; selection-background-color: #3478ed; }
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border: 1px solid #3478ed; }
+QPushButton { background: #ffffff; border: 1px solid #cdd8e7; border-radius: 5px; padding: 7px 14px; }
+QPushButton:hover { background: #edf4ff; border-color: #8db3ed; }
+QPushButton:pressed { background: #dceaff; }
+QPushButton:disabled { color: #98a5b7; background: #f4f6f9; border-color: #e0e6ee; }
+QPushButton#connectDevicesButton, QPushButton#startAllButton { background: #286bdb; color: white; border-color: #286bdb; font-weight: 600; }
+QPushButton#startAllButton:disabled { background: #c4d5f0; border-color: #c4d5f0; color: #f7faff; }
+QPushButton#stopAllButton { color: #b44b57; border-color: #e7c3c9; }
+QLabel#dmdPreviewLabel, QLabel#slm1PreviewLabel, QLabel#slm2PreviewLabel, QLabel#ccdPreviewLabel { background: #101b2b; color: #8ea4c0; border: 1px solid #263b55; border-radius: 6px; font-size: 15px; }
+QCheckBox { spacing: 7px; }
+QScrollArea { border: none; background: transparent; }
+QWidget#configurationScrollContents, QWidget#previewScrollContents { background: #f8fafc; }
+QStatusBar { background: #eaf0f7; color: #647790; }
+
+QFrame#dmdPreviewCard, QFrame#slm1PreviewCard, QFrame#slm2PreviewCard, QFrame#ccdPreviewCard { background: white; border: 1px solid #d8e2ef; border-radius: 10px; }
+QLabel#dmdTitleLabel, QLabel#slm1TitleLabel, QLabel#slm2TitleLabel, QLabel#ccdTitleLabel { font-size: 14px; font-weight: 600; color: #203958; }
+QLabel#dmdBadgeLabel, QLabel#slm1BadgeLabel, QLabel#slm2BadgeLabel, QLabel#ccdBadgeLabel { background: #eaf1fb; color: #3168ae; border-radius: 4px; padding: 4px 0; qproperty-alignment: AlignCenter; font-weight: 600; }
+QLabel#dmdStateLabel, QLabel#slm1StateLabel, QLabel#slm2StateLabel, QLabel#ccdStateLabel { color: #608078; font-size: 11px; }
+QLabel#dmdPanelInfoLabel, QLabel#slm1PanelInfoLabel, QLabel#slm2PanelInfoLabel, QLabel#ccdPanelInfoLabel, QLabel#dmdActiveAreaLabel, QLabel#slm1ActiveAreaLabel, QLabel#slm2ActiveAreaLabel, QLabel#ccdActiveAreaLabel { color: #65788f; font-size: 11px; }
+QLabel#dmdFrameInfoLabel, QLabel#slm1FrameInfoLabel, QLabel#slm2FrameInfoLabel, QLabel#ccdFrameInfoLabel { color: #536b86; font-size: 11px; }
+QLabel#previewHintLabel { font-size: 14px; font-weight: 600; color: #29476b; }
+QLabel#dmdOutputHintLabel, QLabel#slm2OutputHintLabel { color: #7e8ea2; font-size: 11px; }
+QFrame#dmdPreviewCard QPushButton, QFrame#slm1PreviewCard QPushButton, QFrame#slm2PreviewCard QPushButton, QFrame#ccdPreviewCard QPushButton { padding: 5px 4px; }
+
+QWidget#dmdControlsWidget, QWidget#slm1ControlsWidget, QWidget#slm2ControlsWidget, QWidget#ccdControlsWidget { background: transparent; }
+QWidget#dmdControlsWidget QComboBox, QWidget#slm1ControlsWidget QComboBox, QWidget#slm2ControlsWidget QComboBox, QWidget#ccdControlsWidget QComboBox { min-height: 18px; padding: 4px 7px; }
+QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget#slm2ControlsWidget QSpinBox, QWidget#ccdControlsWidget QDoubleSpinBox { min-height: 18px; padding: 4px 5px; }
+</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="mainLayout">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item>
+       <layout class="QVBoxLayout" name="headingLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="titleLabel">
+          <property name="text">
+           <string>光学实验控制台</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="subtitleLabel">
+          <property name="text">
+           <string>DMD 输入  /  双 SLM 相位调制  /  CCD 图像采集</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="headerLayoutSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="connectionStateLabel">
+        <property name="text">
+         <string>●  设备未连接</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="mainTabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="configurationPage">
+       <attribute name="title">
+        <string>01  参数配置</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="configurationLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QScrollArea" name="configurationScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="configurationScrollContents">
+           <layout class="QVBoxLayout" name="configurationContentLayout">
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QGroupBox" name="sessionGroupBox">
+              <property name="title">
+               <string>实验与文件</string>
+              </property>
+              <layout class="QFormLayout" name="sessionFormLayout">
+               <property name="spacing">
+                <number>10</number>
+               </property>
+               <property name="fieldGrowthPolicy">
+                <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+               </property>
+               <property name="labelAlignment">
+                <set>Qt::AlignRight|Qt::AlignVCenter</set>
+               </property>
+               <item row="0" column="0">
+                <widget class="QLabel" name="sessionNameEditLabel">
+                 <property name="text">
+                  <string>实验名称</string>
+                 </property>
+                 <property name="buddy">
+                  <cstring>sessionNameEdit</cstring>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLineEdit" name="sessionNameEdit">
+                 <property name="text">
+                  <string>光学对准实验</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="outputDirectoryEditLabel">
+                 <property name="text">
+                  <string>保存目录</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <layout class="QHBoxLayout" name="outputDirectoryEditLayout">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <item>
+                  <widget class="QLineEdit" name="outputDirectoryEdit">
+                   <property name="text">
+                    <string>output/dvp2_camera</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>output/dvp2_camera</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="outputDirectoryEditBrowseButton">
+                   <property name="text">
+                    <string>浏览…</string>
+                   </property>
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="2" column="1">
+                <layout class="QHBoxLayout" name="sessionOptionsLayout">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <item>
+                  <widget class="QCheckBox" name="saveManifestCheckBox">
+                   <property name="text">
+                    <string>保存采集记录</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="overwriteCheckBox">
+                   <property name="text">
+                    <string>覆盖同名文件</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="sessionOptionsLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="deviceConfigurationGrid">
+              <property name="spacing">
+               <number>10</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="dmdConfigurationGroupBox">
+                <property name="title">
+                 <string>DMD · 输入显示</string>
+                </property>
+                <layout class="QFormLayout" name="dmdConfigurationForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="dmdEnabledCheckBoxLabel">
+                   <property name="text">
+                    <string>设备状态</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdEnabledCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="dmdEnabledCheckBox">
+                   <property name="text">
+                    <string>启用 DMD</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="dmdInputPathEditLabel">
+                   <property name="text">
+                    <string>输入路径</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <layout class="QHBoxLayout" name="dmdInputPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="dmdInputPathEdit">
+                     <property name="text">
+                      <string />
+                     </property>
+                     <property name="placeholderText">
+                      <string>选择单张图像或图像序列目录</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>选择单张图像或图像序列目录</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="dmdInputPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="dmdMonitorSpinBoxLabel">
+                   <property name="text">
+                    <string>显示器编号</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdMonitorSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QSpinBox" name="dmdMonitorSpinBox">
+                   <property name="minimum">
+                    <number>0</number>
+                   </property>
+                   <property name="maximum">
+                    <number>31</number>
+                   </property>
+                   <property name="value">
+                    <number>0</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="dmdSettleSpinBoxLabel">
+                   <property name="text">
+                    <string>采集前稳定时间</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdSettleSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QDoubleSpinBox" name="dmdSettleSpinBox">
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0</double>
+                   </property>
+                   <property name="maximum">
+                    <double>3600</double>
+                   </property>
+                   <property name="value">
+                    <double>1</double>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="dmdLoopCheckBoxLabel">
+                   <property name="text">
+                    <string>播放选项</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdLoopCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QCheckBox" name="dmdLoopCheckBox">
+                   <property name="text">
+                    <string>循环播放</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLabel" name="dmdGeometryLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080 · 输入有效区通常为 640 × 640</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QGroupBox" name="slm1ConfigurationGroupBox">
+                <property name="title">
+                 <string>SLM1 · 中科微兴</string>
+                </property>
+                <layout class="QFormLayout" name="slm1ConfigurationForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="slm1EnabledCheckBoxLabel">
+                   <property name="text">
+                    <string>设备状态</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm1EnabledCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="slm1EnabledCheckBox">
+                   <property name="text">
+                    <string>启用 SLM1</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="slm1InputPathEditLabel">
+                   <property name="text">
+                    <string>相位图路径</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <layout class="QHBoxLayout" name="slm1InputPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="slm1InputPathEdit">
+                     <property name="text">
+                      <string>tools/slm1</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>tools/slm1</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="slm1InputPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="slm1SdkPathEditLabel">
+                   <property name="text">
+                    <string>SDK 目录</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <layout class="QHBoxLayout" name="slm1SdkPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="slm1SdkPathEdit">
+                     <property name="text">
+                      <string>tools/3rdparty/python_VS2015_x64</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>tools/3rdparty/python_VS2015_x64</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="slm1SdkPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="slm1MonitorSpinBoxLabel">
+                   <property name="text">
+                    <string>显示器编号</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm1MonitorSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QSpinBox" name="slm1MonitorSpinBox">
+                   <property name="minimum">
+                    <number>-1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>31</number>
+                   </property>
+                   <property name="value">
+                    <number>-1</number>
+                   </property>
+                   <property name="specialValueText">
+                    <string>自动选择</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="slm1IntervalSpinBoxLabel">
+                   <property name="text">
+                    <string>播放间隔</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm1IntervalSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QDoubleSpinBox" name="slm1IntervalSpinBox">
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0.01</double>
+                   </property>
+                   <property name="maximum">
+                    <double>3600</double>
+                   </property>
+                   <property name="value">
+                    <double>5</double>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLabel" name="slm1GeometryLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080 · 相位有效区通常为 432 × 432</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QGroupBox" name="slm2ConfigurationGroupBox">
+                <property name="title">
+                 <string>SLM2 · MagicHolo HDSLM45R</string>
+                </property>
+                <layout class="QFormLayout" name="slm2ConfigurationForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="slm2EnabledCheckBoxLabel">
+                   <property name="text">
+                    <string>设备状态</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm2EnabledCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="slm2EnabledCheckBox">
+                   <property name="text">
+                    <string>启用 SLM2</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="slm2InputPathEditLabel">
+                   <property name="text">
+                    <string>相位图路径</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <layout class="QHBoxLayout" name="slm2InputPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="slm2InputPathEdit">
+                     <property name="text">
+                      <string>tools/slm2</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>tools/slm2</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="slm2InputPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="slm2SdkPathEditLabel">
+                   <property name="text">
+                    <string>SDK 目录</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <layout class="QHBoxLayout" name="slm2SdkPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="slm2SdkPathEdit">
+                     <property name="text">
+                      <string>tools/3rdparty/HDSLM_SDK_0612/HDSLM_API/Bin</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>tools/3rdparty/HDSLM_SDK_0612/HDSLM_API/Bin</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="slm2SdkPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="slm2DisplaySpinBoxLabel">
+                   <property name="text">
+                    <string>SDK display ID</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm2DisplaySpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QSpinBox" name="slm2DisplaySpinBox">
+                   <property name="minimum">
+                    <number>-1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>31</number>
+                   </property>
+                   <property name="value">
+                    <number>-1</number>
+                   </property>
+                   <property name="specialValueText">
+                    <string>自动选择</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="slm2BackgroundSpinBoxLabel">
+                   <property name="text">
+                    <string>外围灰度</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm2BackgroundSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QSpinBox" name="slm2BackgroundSpinBox">
+                   <property name="minimum">
+                    <number>0</number>
+                   </property>
+                   <property name="maximum">
+                    <number>255</number>
+                   </property>
+                   <property name="value">
+                    <number>0</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="slm2IntervalSpinBoxLabel">
+                   <property name="text">
+                    <string>播放间隔</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>slm2IntervalSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QDoubleSpinBox" name="slm2IntervalSpinBox">
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0.01</double>
+                   </property>
+                   <property name="maximum">
+                    <double>3600</double>
+                   </property>
+                   <property name="value">
+                    <double>5</double>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>双 SLM 同步播放时使用 SLM1 的间隔；取消同步后可单独设置。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QLabel" name="slm2GeometryLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080 · 相位有效区通常为 768 × 768</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QGroupBox" name="ccdConfigurationGroupBox">
+                <property name="title">
+                 <string>CCD · DVP2 相机</string>
+                </property>
+                <layout class="QFormLayout" name="ccdConfigurationForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="ccdEnabledCheckBoxLabel">
+                   <property name="text">
+                    <string>设备状态</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdEnabledCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="ccdEnabledCheckBox">
+                   <property name="text">
+                    <string>启用 CCD</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="ccdDllPathEditLabel">
+                   <property name="text">
+                    <string>SDK DLL</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <layout class="QHBoxLayout" name="ccdDllPathEditLayout">
+                   <property name="spacing">
+                    <number>10</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="ccdDllPathEdit">
+                     <property name="text">
+                      <string>tools/3rdparty/DVP2 SDK CN/library/Visual C++/bin/x64/DVPCamera64.dll</string>
+                     </property>
+                     <property name="toolTip">
+                      <string>tools/3rdparty/DVP2 SDK CN/library/Visual C++/bin/x64/DVPCamera64.dll</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="ccdDllPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="ccdCameraSpinBoxLabel">
+                   <property name="text">
+                    <string>相机编号</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdCameraSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QSpinBox" name="ccdCameraSpinBox">
+                   <property name="minimum">
+                    <number>0</number>
+                   </property>
+                   <property name="maximum">
+                    <number>31</number>
+                   </property>
+                   <property name="value">
+                    <number>0</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="ccdFormatComboBoxLabel">
+                   <property name="text">
+                    <string>输出格式</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdFormatComboBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="ccdFormatComboBox">
+                   <item>
+                    <property name="text">
+                     <string>bgr8</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>mono8</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>native</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="ccdTimeoutSpinBoxLabel">
+                   <property name="text">
+                    <string>取帧超时</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdTimeoutSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QSpinBox" name="ccdTimeoutSpinBox">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>60000</number>
+                   </property>
+                   <property name="value">
+                    <number>500</number>
+                   </property>
+                   <property name="suffix">
+                    <string> ms</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="ccdRoiCheckBoxLabel">
+                   <property name="text">
+                    <string>传感器区域</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdRoiCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QCheckBox" name="ccdRoiCheckBox">
+                   <property name="text">
+                    <string>启用 ROI</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0" colspan="2">
+                  <widget class="QWidget" name="ccdRoiWidget">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <layout class="QHBoxLayout" name="ccdRoiLayout">
+                    <property name="spacing">
+                     <number>10</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="ccdRoiXSpinBoxLabel">
+                      <property name="text">
+                       <string>X</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QSpinBox" name="ccdRoiXSpinBox">
+                      <property name="minimum">
+                       <number>0</number>
+                      </property>
+                      <property name="maximum">
+                       <number>32768</number>
+                      </property>
+                      <property name="value">
+                       <number>0</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="ccdRoiYSpinBoxLabel">
+                      <property name="text">
+                       <string>Y</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QSpinBox" name="ccdRoiYSpinBox">
+                      <property name="minimum">
+                       <number>0</number>
+                      </property>
+                      <property name="maximum">
+                       <number>32768</number>
+                      </property>
+                      <property name="value">
+                       <number>0</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="ccdRoiWidthSpinBoxLabel">
+                      <property name="text">
+                       <string>宽</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QSpinBox" name="ccdRoiWidthSpinBox">
+                      <property name="minimum">
+                       <number>1</number>
+                      </property>
+                      <property name="maximum">
+                       <number>32768</number>
+                      </property>
+                      <property name="value">
+                       <number>640</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="ccdRoiHeightSpinBoxLabel">
+                      <property name="text">
+                       <string>高</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QSpinBox" name="ccdRoiHeightSpinBox">
+                      <property name="minimum">
+                       <number>1</number>
+                      </property>
+                      <property name="maximum">
+                       <number>32768</number>
+                      </property>
+                      <property name="value">
+                       <number>640</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="configurationActionsLayout">
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="loadConfigurationButton">
+            <property name="text">
+             <string>载入配置</string>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveConfigurationButton">
+            <property name="text">
+             <string>保存配置</string>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="configurationActionsLayoutSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="enumerateDevicesButton">
+            <property name="text">
+             <string>枚举设备</string>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="validateConfigurationButton">
+            <property name="text">
+             <string>检查参数</string>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="connectDevicesButton">
+            <property name="text">
+             <string>连接设备</string>
+            </property>
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="previewPage">
+       <attribute name="title">
+        <string>02  画面预览</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="previewPageLayout">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <property name="leftMargin">
+         <number>12</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="topMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
+         <number>12</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="previewToolbarLayout">
+          <property name="spacing">
+           <number>14</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="previewHintLabel">
+            <property name="text">
+             <string>实时监控</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="previewToolbarLayoutSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint">
+             <size>
+              <width>10</width>
+              <height>10</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="synchronizeDmdCcdCheckBox">
+            <property name="text">
+             <string>DMD 同步采集</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>勾选后，DMD 每次播放一张输入图案，等待稳定时间后采集一帧 CCD 并按同名 PNG 保存。取消勾选时仅播放与预览。</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="synchronizeSlmsCheckBox">
+            <property name="text">
+             <string>双 SLM 同步播放</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="startAllButton">
+            <property name="text">
+             <string>开始运行</string>
+            </property>
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="stopAllButton">
+            <property name="text">
+             <string>停止全部</string>
+            </property>
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QScrollArea" name="previewScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="previewScrollContents">
+           <property name="minimumSize">
+            <size>
+             <width>1030</width>
+             <height>748</height>
+            </size>
+           </property>
+           <layout class="QGridLayout" name="previewGridLayout" rowstretch="1,1" columnstretch="1,1">
+            <property name="spacing">
+             <number>12</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item row="0" column="0">
+             <widget class="QFrame" name="dmdPreviewCard">
+              <layout class="QVBoxLayout" name="dmdPreviewLayout">
+               <property name="spacing">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="dmdHeaderLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="dmdBadgeLabel">
+                   <property name="text">
+                    <string>01</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>26</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>26</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="dmdTitleLabel">
+                   <property name="text">
+                    <string>DMD · 输入调制</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="dmdHeaderLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="dmdStateLabel">
+                   <property name="text">
+                    <string>● 未连接</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="dmdGeometryLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="dmdPanelInfoLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="dmdGeometryLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="dmdActiveAreaLabel">
+                   <property name="text">
+                    <string>有效区：等待载入</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="dmdBodyLayout" stretch="1,0">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="dmdPreviewLabel">
+                   <property name="text">
+                    <string>等待载入图像
+
+连接设备或选择输入文件后预览</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>1</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>220</width>
+                     <height>256</height>
+                    </size>
+                   </property>
+                   <property name="toolTip">
+                    <string>保持图像宽高比。有效区域预览不会缩放或移动实际硬件上的输入像素。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QWidget" name="dmdControlsWidget">
+                   <property name="minimumSize">
+                    <size>
+                     <width>176</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>176</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <layout class="QVBoxLayout" name="dmdControlsLayout">
+                    <property name="spacing">
+                     <number>6</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="dmdPreviewModeComboBox">
+                      <item>
+                       <property name="text">
+                        <string>有效区域</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>完整面板</string>
+                       </property>
+                      </item>
+                      <property name="toolTip">
+                       <string>有效区域放大查看输入图案；完整面板查看1920×1080面板中的位置及偏移。</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="dmdZoomComboBox">
+                      <item>
+                       <property name="text">
+                        <string>适应窗口</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>1:1 像素</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdNavigationLayout">
+                      <property name="spacing">
+                       <number>4</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="dmdPreviousButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>‹</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>上一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="dmdFrameSpinBox">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="dmdTotalFramesLabel">
+                        <property name="text">
+                         <string>/ —</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>32</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>32</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="dmdNextButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>›</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>下一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdPlayActionsLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="dmdPlayButton">
+                        <property name="text">
+                         <string>播放</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="dmdPauseButton">
+                        <property name="text">
+                         <string>暂停</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdTimingLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="dmdIntervalLabel">
+                        <property name="text">
+                         <string>间隔</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="dmdIntervalSpinBox">
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.01</double>
+                        </property>
+                        <property name="maximum">
+                         <double>3600</double>
+                        </property>
+                        <property name="value">
+                         <double>2</double>
+                        </property>
+                        <property name="suffix">
+                         <string> s</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="dmdShowCursorCheckBox">
+                      <property name="text">
+                       <string>显示光标</string>
+                      </property>
+                      <property name="checked">
+                       <bool>false</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="dmdControlsLayoutSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint">
+                       <size>
+                        <width>10</width>
+                        <height>10</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="dmdOutputHintLabel">
+                      <property name="text">
+                       <string>原始像素 · 居中输出</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QLabel" name="dmdFrameInfoLabel">
+                 <property name="text">
+                  <string>文件：等待载入</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>16</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QFrame" name="slm1PreviewCard">
+              <layout class="QVBoxLayout" name="slm1PreviewLayout">
+               <property name="spacing">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="slm1HeaderLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm1BadgeLabel">
+                   <property name="text">
+                    <string>02</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>26</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>26</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm1TitleLabel">
+                   <property name="text">
+                    <string>SLM1 · 中科微兴</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="slm1HeaderLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm1StateLabel">
+                   <property name="text">
+                    <string>● 未连接</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="slm1GeometryLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm1PanelInfoLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="slm1GeometryLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm1ActiveAreaLabel">
+                   <property name="text">
+                    <string>有效区：等待载入</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="slm1BodyLayout" stretch="1,0">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm1PreviewLabel">
+                   <property name="text">
+                    <string>等待载入图像
+
+连接设备或选择输入文件后预览</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>1</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>220</width>
+                     <height>256</height>
+                    </size>
+                   </property>
+                   <property name="toolTip">
+                    <string>保持图像宽高比。有效区域预览不会缩放或移动实际硬件上的输入像素。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QWidget" name="slm1ControlsWidget">
+                   <property name="minimumSize">
+                    <size>
+                     <width>176</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>176</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <layout class="QVBoxLayout" name="slm1ControlsLayout">
+                    <property name="spacing">
+                     <number>6</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="slm1PreviewModeComboBox">
+                      <item>
+                       <property name="text">
+                        <string>有效区域</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>完整面板</string>
+                       </property>
+                      </item>
+                      <property name="toolTip">
+                       <string>有效区域放大查看输入图案；完整面板查看1920×1080面板中的位置及偏移。</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="slm1ZoomComboBox">
+                      <item>
+                       <property name="text">
+                        <string>适应窗口</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>1:1 像素</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1NavigationLayout">
+                      <property name="spacing">
+                       <number>4</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="slm1PreviousButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>‹</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>上一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm1FrameSpinBox">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="slm1TotalFramesLabel">
+                        <property name="text">
+                         <string>/ —</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>32</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>32</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm1NextButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>›</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>下一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1PlayActionsLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="slm1PlayButton">
+                        <property name="text">
+                         <string>播放</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm1PauseButton">
+                        <property name="text">
+                         <string>暂停</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1OffsetXLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm1OffsetXLabel">
+                        <property name="text">
+                         <string>X</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm1OffsetXSpinBox">
+                        <property name="minimum">
+                         <number>-1920</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1920</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1OffsetYLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm1OffsetYLabel">
+                        <property name="text">
+                         <string>Y</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm1OffsetYSpinBox">
+                        <property name="minimum">
+                         <number>-1080</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1080</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm1ApplyOffsetButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>应用</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>48</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>48</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>应用有效区相对面板中心的偏移。切换“完整面板”可查看位置；有效区域模式只放大图案本身。</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="slm1HoldLastFrameCheckBox">
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                      <property name="text">
+                       <string>保持末帧</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="slm1ControlsLayoutSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint">
+                       <size>
+                        <width>10</width>
+                        <height>10</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QLabel" name="slm1FrameInfoLabel">
+                 <property name="text">
+                  <string>文件：等待载入</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>16</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QFrame" name="slm2PreviewCard">
+              <layout class="QVBoxLayout" name="slm2PreviewLayout">
+               <property name="spacing">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="slm2HeaderLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm2BadgeLabel">
+                   <property name="text">
+                    <string>03</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>26</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>26</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm2TitleLabel">
+                   <property name="text">
+                    <string>SLM2 · MagicHolo</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="slm2HeaderLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm2StateLabel">
+                   <property name="text">
+                    <string>● 未连接</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="slm2GeometryLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm2PanelInfoLabel">
+                   <property name="text">
+                    <string>面板 1920 × 1080</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="slm2GeometryLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="slm2ActiveAreaLabel">
+                   <property name="text">
+                    <string>有效区：等待载入</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="slm2BodyLayout" stretch="1,0">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="slm2PreviewLabel">
+                   <property name="text">
+                    <string>等待载入图像
+
+连接设备或选择输入文件后预览</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>1</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>220</width>
+                     <height>256</height>
+                    </size>
+                   </property>
+                   <property name="toolTip">
+                    <string>保持图像宽高比。有效区域预览不会缩放或移动实际硬件上的输入像素。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QWidget" name="slm2ControlsWidget">
+                   <property name="minimumSize">
+                    <size>
+                     <width>176</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>176</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <layout class="QVBoxLayout" name="slm2ControlsLayout">
+                    <property name="spacing">
+                     <number>6</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="slm2PreviewModeComboBox">
+                      <item>
+                       <property name="text">
+                        <string>有效区域</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>完整面板</string>
+                       </property>
+                      </item>
+                      <property name="toolTip">
+                       <string>有效区域放大查看输入图案；完整面板查看1920×1080面板中的位置及偏移。</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="slm2ZoomComboBox">
+                      <item>
+                       <property name="text">
+                        <string>适应窗口</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>1:1 像素</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2NavigationLayout">
+                      <property name="spacing">
+                       <number>4</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="slm2PreviousButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>‹</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>上一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm2FrameSpinBox">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>999999</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="slm2TotalFramesLabel">
+                        <property name="text">
+                         <string>/ —</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>32</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>32</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm2NextButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>›</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>下一帧</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>28</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>28</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2PlayActionsLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="slm2PlayButton">
+                        <property name="text">
+                         <string>播放</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm2PauseButton">
+                        <property name="text">
+                         <string>暂停</string>
+                        </property>
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2OffsetXLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm2OffsetXLabel">
+                        <property name="text">
+                         <string>X</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm2OffsetXSpinBox">
+                        <property name="minimum">
+                         <number>-1920</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1920</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2OffsetYLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm2OffsetYLabel">
+                        <property name="text">
+                         <string>Y</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="slm2OffsetYSpinBox">
+                        <property name="minimum">
+                         <number>-1080</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1080</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="slm2ApplyOffsetButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>应用</string>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>48</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>48</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>应用有效区相对面板中心的偏移。切换“完整面板”可查看位置；有效区域模式只放大图案本身。</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="slm2OutputHintLabel">
+                      <property name="text">
+                       <string>偏移单位：面板像素</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="slm2ControlsLayoutSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint">
+                       <size>
+                        <width>10</width>
+                        <height>10</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QLabel" name="slm2FrameInfoLabel">
+                 <property name="text">
+                  <string>文件：等待载入</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>16</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QFrame" name="ccdPreviewCard">
+              <layout class="QVBoxLayout" name="ccdPreviewLayout">
+               <property name="spacing">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="ccdHeaderLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="ccdBadgeLabel">
+                   <property name="text">
+                    <string>04</string>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>26</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>26</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="ccdTitleLabel">
+                   <property name="text">
+                    <string>CCD · 图像采集</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="ccdHeaderLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="ccdStateLabel">
+                   <property name="text">
+                    <string>● 未连接</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="ccdGeometryLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="ccdPanelInfoLabel">
+                   <property name="text">
+                    <string>采集尺寸 —</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="ccdGeometryLayoutSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="ccdActiveAreaLabel">
+                   <property name="text">
+                    <string>预览帧率 — FPS</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="ccdBodyLayout" stretch="1,0">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="ccdPreviewLabel">
+                   <property name="text">
+                    <string>等待相机画面
+
+连接 CCD 后显示采集帧</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>1</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>220</width>
+                     <height>256</height>
+                    </size>
+                   </property>
+                   <property name="toolTip">
+                    <string>实时相机画面，保持原始宽高比。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QWidget" name="ccdControlsWidget">
+                   <property name="minimumSize">
+                    <size>
+                     <width>176</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>176</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <layout class="QVBoxLayout" name="ccdControlsLayout">
+                    <property name="spacing">
+                     <number>6</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="ccdZoomComboBox">
+                      <item>
+                       <property name="text">
+                        <string>适应窗口</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>1:1 像素</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="ccdExposureSpinBoxLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="ccdExposureSpinBoxLabel">
+                        <property name="text">
+                         <string>曝光</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="ccdExposureSpinBox">
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>1</double>
+                        </property>
+                        <property name="maximum">
+                         <double>10000000</double>
+                        </property>
+                        <property name="value">
+                         <double>10000</double>
+                        </property>
+                        <property name="suffix">
+                         <string> μs</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="ccdGainSpinBoxLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="ccdGainSpinBoxLabel">
+                        <property name="text">
+                         <string>增益</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="ccdGainSpinBox">
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.01</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1000</double>
+                        </property>
+                        <property name="value">
+                         <double>1</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="ccdApplyLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="ccdAutoExposureCheckBox">
+                        <property name="text">
+                         <string>自动</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="ccdApplyParametersButton">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>应用</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="ccdCaptureButton">
+                      <property name="text">
+                       <string>保存单帧</string>
+                      </property>
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="ccdRecordButton">
+                      <property name="text">
+                       <string>开始录像</string>
+                      </property>
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="ccdControlsLayoutSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Vertical</enum>
+                      </property>
+                      <property name="sizeHint">
+                       <size>
+                        <width>10</width>
+                        <height>10</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="ccdFramesReceivedLabel">
+                      <property name="text">
+                       <string>已保存 0 帧</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QLabel" name="ccdFrameInfoLabel">
+                 <property name="text">
+                  <string>等待相机帧</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>16</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="previewFooterLayout">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="sessionHintLabel">
+            <property name="text">
+             <string>当前实验：尚未开始</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="previewFooterLayoutSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint">
+             <size>
+              <width>10</width>
+              <height>10</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="capturePathLabel">
+            <property name="text">
+             <string>保存目录：output/dvp2_camera</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar" />
+ </widget>
+ <resources />
+ <connections>
+  <connection>
+   <sender>synchronizeSlmsCheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>slm2IntervalSpinBox</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>ccdRoiCheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>ccdRoiWidget</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>ccdAutoExposureCheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>ccdExposureSpinBox</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>ccdAutoExposureCheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>ccdGainSpinBox</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

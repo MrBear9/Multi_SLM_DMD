@@ -2,6 +2,17 @@
 
 本文对应 `tools` 中现有脚本，说明 DMD 输入、双 SLM 相位显示、DVP2 相机采集与 CCD 图像整理流程。命令参数按源码核对，未在本次文档编写中连接或测试硬件。
 
+## 图形界面
+
+Qt Designer 界面为 `ui/MainWindow.ui`，已绑定配置、预览、显示控制、CCD 采集和录像。预览页采用左侧大画面、右侧控件，支持有效区/完整面板切换、两片 SLM 偏移和可选 DMD 同步采集。
+
+```powershell
+python -m tools.apps.optical_control --demo
+python -m tools.apps.optical_control
+```
+
+需要 `requirements-gui.txt` 中的依赖。运行步骤、软件同步行为与设备参数说明见 [MainWindow 使用说明](ui/README.md)。
+
 ## 代码结构与开发约定
 
 本次重构移除了根目录旧脚本，不提供兼容入口。请在项目根目录用 `python -m tools.<目录>.<模块>` 运行下文命令，不要直接执行包内文件。
@@ -59,8 +70,8 @@ python -m unittest discover -s tools/tests -v
 
 | 部件 | 项目配置/角色 | 显示或采集工具 |
 | --- | --- | --- |
-| DMD | 640×640 输入，硬件像元 5.4 μm | `apps/play_dmd_input_fullscreen.py` |
-| SLM1 | 中科微兴，硬件像元 8.0 μm，有效区 432×432 | `apps/play_zkwx_slm1.py` |
+| DMD | 1920×1080 面板，当前输入有效区 640×640，硬件像元 5.4 μm | `apps/play_dmd_input_fullscreen.py` |
+| SLM1 | 中科微兴，1920×1080 面板，硬件像元 8.0 μm，当前有效区 432×432 | `apps/play_zkwx_slm1.py` |
 | SLM2 | MagicHolo HDSLM45R，硬件像元 4.5 μm，有效区 768×768；脚本按 1920×1080 面板处理 | `apps/play_magicholo_slm2.py` |
 | 双 SLM | 同名相位对联动播放 | `apps/play_dual_slms.py` |
 | 相机 | DVP2 SDK 支持的工业相机，设备型号以枚举结果为准 | `apps/control_dvp2_camera.py` |

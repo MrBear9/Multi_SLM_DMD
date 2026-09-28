@@ -100,3 +100,40 @@ def validate_images(paths: list[Path], monitor: Monitor) -> tuple[int, int]:
     if expected_size is None:
         raise RuntimeError("No image was selected.")
     return expected_size
+
+
+def canvas_origin(
+    image_size: tuple[int, int],
+    monitor: Monitor,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> tuple[int, int]:
+    """Return native-pixel placement relative to the centre of the SLM panel."""
+    width, height = image_size
+    left = (monitor.width - width) // 2 + offset_x
+    top = (monitor.height - height) // 2 + offset_y
+    if (width <= 0 or height <= 0 or left < 0 or top < 0
+            or left + width > monitor.width or top + height > monitor.height):
+        raise ValueError("The requested SLM1 offset moves the phase image outside the display.")
+    return left, top
+
+
+def prepare_canvas(
+    path: Path,
+    monitor: Monitor,
+    offset_x: int = 0,
+    offset_y: int = 0,
+) -> Image.Image:
+    """Keep source grayscale values on a full-size black panel without resampling.
+
+    The caller owns the returned image. Keeping the whole panel covered also
+    clears pixels occupied by a previous placement when the offset changes.
+    """
+    with Image.open(path) as image:
+        image.load()
+        if image.mode not in {"1", "L", "I", "I;16"}:
+            raise ValueError(f"SLM1 phase image must be single-channel grayscale: {path}")
+        origin = canvas_origin(image.size, monitor, offset_x, offset_y)
+        canvas = Image.new(image.mode, (monitor.width, monitor.height), color=0)
+        canvas.paste(image, origin)
+        return canvas
