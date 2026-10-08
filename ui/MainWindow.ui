@@ -266,7 +266,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
               <item row="0" column="0">
                <widget class="QGroupBox" name="dmdConfigurationGroupBox">
                 <property name="title">
-                 <string>DMD · 输入显示</string>
+                 <string>DMD · 显示器输出</string>
                 </property>
                 <layout class="QFormLayout" name="dmdConfigurationForm">
                  <property name="spacing">
@@ -291,7 +291,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                  <item row="0" column="1">
                   <widget class="QCheckBox" name="dmdEnabledCheckBox">
                    <property name="text">
-                    <string>启用 DMD</string>
+                    <string>启用显示器 DMD</string>
                    </property>
                    <property name="checked">
                     <bool>true</bool>
@@ -355,55 +355,6 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                    </property>
                    <property name="value">
                     <number>0</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="dmdSettleSpinBoxLabel">
-                   <property name="text">
-                    <string>采集前稳定时间</string>
-                   </property>
-                   <property name="buddy">
-                    <cstring>dmdSettleSpinBox</cstring>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="dmdSettleSpinBox">
-                   <property name="decimals">
-                    <number>2</number>
-                   </property>
-                   <property name="minimum">
-                    <double>0</double>
-                   </property>
-                   <property name="maximum">
-                    <double>3600</double>
-                   </property>
-                   <property name="value">
-                    <double>1</double>
-                   </property>
-                   <property name="suffix">
-                    <string> s</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="dmdLoopCheckBoxLabel">
-                   <property name="text">
-                    <string>播放选项</string>
-                   </property>
-                   <property name="buddy">
-                    <cstring>dmdLoopCheckBox</cstring>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QCheckBox" name="dmdLoopCheckBox">
-                   <property name="text">
-                    <string>循环播放</string>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
@@ -1044,6 +995,534 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                 </layout>
                </widget>
               </item>
+              <item row="2" column="0">
+               <widget class="QGroupBox" name="f4321ConfigurationGroupBox">
+                <property name="title">
+                 <string>DMD · F4321 高速控制器</string>
+                </property>
+                <layout class="QFormLayout" name="f4321ConfigurationForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="f4321EnabledCheckBoxLabel">
+                   <property name="text">
+                    <string>设备状态</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>f4321EnabledCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="f4321EnabledCheckBox">
+                   <property name="text">
+                    <string>启用 F4321 DMD</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>DMD 预览区共用；显示器 DMD 和 F4321 DMD 每次只启用一种。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="f4321InputPathEditLayoutLabel">
+                   <property name="text">
+                    <string>输入路径</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <layout class="QHBoxLayout" name="f4321InputPathEditLayout">
+                   <property name="spacing">
+                    <number>8</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="f4321InputPathEdit">
+                     <property name="text">
+                      <string />
+                     </property>
+                     <property name="placeholderText">
+                      <string>选择单张图像或图像序列目录</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="f4321InputPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="f4321DllPathEditLayoutLabel">
+                   <property name="text">
+                    <string>SDK DLL</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <layout class="QHBoxLayout" name="f4321DllPathEditLayout">
+                   <property name="spacing">
+                    <number>8</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="f4321DllPathEdit">
+                     <property name="text">
+                      <string>tools/3rdparty/F4321_HS_FG/DLL_Python_2/F4321_HS.dll</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="f4321DllPathEditBrowseButton">
+                     <property name="text">
+                      <string>浏览…</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="f4321DeviceIdSpinBoxLabel">
+                   <property name="text">
+                    <string>设备 ID</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>f4321DeviceIdSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QSpinBox" name="f4321DeviceIdSpinBox">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>3</number>
+                   </property>
+                   <property name="value">
+                    <number>1</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="f4321LocalEndpointLayoutLabel">
+                   <property name="text">
+                    <string>本机 IP / 端口</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <layout class="QHBoxLayout" name="f4321LocalEndpointLayout">
+                   <property name="spacing">
+                    <number>8</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="f4321LocalIpEdit">
+                     <property name="text">
+                      <string>192.168.1.10</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="f4321LocalPortSpinBox">
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>1234</number>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="f4321TargetEndpointLayoutLabel">
+                   <property name="text">
+                    <string>设备 IP / 端口</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <layout class="QHBoxLayout" name="f4321TargetEndpointLayout">
+                   <property name="spacing">
+                    <number>8</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="f4321TargetIpEdit">
+                     <property name="text">
+                      <string>192.168.1.100</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="f4321TargetPortSpinBox">
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>1234</number>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="6" column="0">
+                  <widget class="QLabel" name="f4321ExposureSpinBoxLabel">
+                   <property name="text">
+                    <string>曝光时间</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>f4321ExposureSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QDoubleSpinBox" name="f4321ExposureSpinBox">
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0.005</double>
+                   </property>
+                   <property name="maximum">
+                    <double>21474836</double>
+                   </property>
+                   <property name="value">
+                    <double>10000</double>
+                   </property>
+                   <property name="suffix">
+                    <string> µs</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>单位为微秒，实际可用范围在连接设备后由 SDK 校验。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="0">
+                  <widget class="QLabel" name="f4321DarkTimeSpinBoxLabel">
+                   <property name="text">
+                    <string>暗场时间</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>f4321DarkTimeSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="1">
+                  <widget class="QDoubleSpinBox" name="f4321DarkTimeSpinBox">
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0</double>
+                   </property>
+                   <property name="maximum">
+                    <double>21474836</double>
+                   </property>
+                   <property name="value">
+                    <double>0</double>
+                   </property>
+                   <property name="suffix">
+                    <string> µs</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>单位为微秒，实际可用范围在连接设备后由 SDK 校验。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="0">
+                  <widget class="QLabel" name="f4321TimeoutSpinBoxLabel">
+                   <property name="text">
+                    <string>传输超时</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>f4321TimeoutSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="1">
+                  <widget class="QDoubleSpinBox" name="f4321TimeoutSpinBox">
+                   <property name="decimals">
+                    <number>1</number>
+                   </property>
+                   <property name="minimum">
+                    <double>1</double>
+                   </property>
+                   <property name="maximum">
+                    <double>120</double>
+                   </property>
+                   <property name="value">
+                    <double>15</double>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="9" column="1">
+                  <widget class="QLabel" name="f4321ConfigurationHintLabel">
+                   <property name="text">
+                    <string>本机 IP 填连接 DMD 的网卡地址。两种 DMD 每次启用一种；转换与循环选项在右侧，连接后共用第二页 DMD 预览。</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QGroupBox" name="dmdConversionGroupBox">
+                <property name="title">
+                 <string>DMD · 图像转换与播放（两种设备共用）</string>
+                </property>
+                <layout class="QFormLayout" name="dmdConversionForm">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="labelAlignment">
+                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="dmdPixelModeComboBoxLabel">
+                   <property name="text">
+                    <string>输入像素格式</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdPixelModeComboBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="dmdPixelModeComboBox">
+                   <item>
+                    <property name="text">
+                     <string>保持原图</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>8 位灰度</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>1 位二值</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="dmdThresholdSpinBoxLabel">
+                   <property name="text">
+                    <string>二值阈值</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdThresholdSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QSpinBox" name="dmdThresholdSpinBox">
+                   <property name="minimum">
+                    <number>0</number>
+                   </property>
+                   <property name="maximum">
+                    <number>255</number>
+                   </property>
+                   <property name="value">
+                    <number>128</number>
+                   </property>
+                   <property name="toolTip">
+                    <string>1 位二值且未勾选抖动时，灰度达到阈值的像素变为白色，其余变为黑色。</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="dmdDitherCheckBoxLabel">
+                   <property name="text">
+                    <string>二值化方式</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdDitherCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QCheckBox" name="dmdDitherCheckBox">
+                   <property name="text">
+                    <string>Floyd–Steinberg 抖动</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="dmdInputRangeComboBoxLabel">
+                   <property name="text">
+                    <string>高位深映射</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdInputRangeComboBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="dmdInputRangeComboBox">
+                   <item>
+                    <property name="text">
+                     <string>按位深范围</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>自定义范围</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="dmdBlackLevelSpinBoxLabel">
+                   <property name="text">
+                    <string>黑电平</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdBlackLevelSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QDoubleSpinBox" name="dmdBlackLevelSpinBox">
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-2147483648</double>
+                   </property>
+                   <property name="maximum">
+                    <double>4294967296</double>
+                   </property>
+                   <property name="value">
+                    <double>0</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="dmdWhiteLevelSpinBoxLabel">
+                   <property name="text">
+                    <string>白电平</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdWhiteLevelSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QDoubleSpinBox" name="dmdWhiteLevelSpinBox">
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-2147483648</double>
+                   </property>
+                   <property name="maximum">
+                    <double>4294967296</double>
+                   </property>
+                   <property name="value">
+                    <double>65535</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0">
+                  <widget class="QLabel" name="dmdSettleSpinBoxLabel">
+                   <property name="text">
+                    <string>采集前稳定时间</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdSettleSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QDoubleSpinBox" name="dmdSettleSpinBox">
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0</double>
+                   </property>
+                   <property name="maximum">
+                    <double>3600</double>
+                   </property>
+                   <property name="value">
+                    <double>1</double>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="0">
+                  <widget class="QLabel" name="dmdLoopCheckBoxLabel">
+                   <property name="text">
+                    <string>播放选项</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>dmdLoopCheckBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="1">
+                  <widget class="QCheckBox" name="dmdLoopCheckBox">
+                   <property name="text">
+                    <string>循环播放</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="1">
+                  <widget class="QLabel" name="dmdConversionHintLabel">
+                   <property name="text">
+                    <string>保留原始文件，仅转换发送副本；不缩放图像。先转换，再旋转或翻转。F4321 请选择 1 位或 8 位，播放间隔在第二页设置。</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>
@@ -1490,6 +1969,84 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                      </widget>
                     </item>
                     <item>
+                     <layout class="QHBoxLayout" name="dmdRotationLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="dmdRotationLabel">
+                        <property name="text">
+                         <string>旋转角度</string>
+                        </property>
+                        <property name="buddy">
+                         <cstring>dmdRotationSpinBox</cstring>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="dmdRotationSpinBox">
+                        <property name="toolTip">
+                         <string>支持任意角度，例如 45°；正值顺时针，负值逆时针。先翻转再旋转，保留完整图像。暂停播放或停止录像后可调整。</string>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-180.0</double>
+                        </property>
+                        <property name="maximum">
+                         <double>180.0</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.0</double>
+                        </property>
+                        <property name="value">
+                         <double>0.0</double>
+                        </property>
+                        <property name="suffix">
+                         <string> °</string>
+                        </property>
+                        <property name="keyboardTracking">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdFlipLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="dmdHorizontalFlipCheckBox">
+                        <property name="text">
+                         <string>水平翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像左右镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="dmdVerticalFlipCheckBox">
+                        <property name="text">
+                         <string>垂直翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像上下镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
                      <layout class="QHBoxLayout" name="dmdNavigationLayout">
                       <property name="spacing">
                        <number>4</number>
@@ -1693,6 +2250,32 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                       </property>
                       <property name="checked">
                        <bool>false</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="dmdUploadButton">
+                      <property name="text">
+                       <string>重新上传</string>
+                      </property>
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="toolTip">
+                       <string>将当前输入序列重新转换并上传到 F4321 DMD 控制器。</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="dmdDeviceInfoLabel">
+                      <property name="text">
+                       <string>SDK 状态：未连接</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="styleSheet">
+                       <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
                       </property>
                      </widget>
                     </item>
@@ -1982,6 +2565,84 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                        </property>
                       </item>
                      </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1RotationLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm1RotationLabel">
+                        <property name="text">
+                         <string>旋转角度</string>
+                        </property>
+                        <property name="buddy">
+                         <cstring>slm1RotationSpinBox</cstring>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="slm1RotationSpinBox">
+                        <property name="toolTip">
+                         <string>支持任意角度，例如 45°；正值顺时针，负值逆时针。先翻转再旋转，保留完整图像。暂停播放或停止录像后可调整。</string>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-180.0</double>
+                        </property>
+                        <property name="maximum">
+                         <double>180.0</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.0</double>
+                        </property>
+                        <property name="value">
+                         <double>0.0</double>
+                        </property>
+                        <property name="suffix">
+                         <string> °</string>
+                        </property>
+                        <property name="keyboardTracking">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1FlipLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="slm1HorizontalFlipCheckBox">
+                        <property name="text">
+                         <string>水平翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像左右镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="slm1VerticalFlipCheckBox">
+                        <property name="text">
+                         <string>垂直翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像上下镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                     <item>
                      <layout class="QHBoxLayout" name="slm1NavigationLayout">
@@ -2535,6 +3196,84 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                      </widget>
                     </item>
                     <item>
+                     <layout class="QHBoxLayout" name="slm2RotationLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="slm2RotationLabel">
+                        <property name="text">
+                         <string>旋转角度</string>
+                        </property>
+                        <property name="buddy">
+                         <cstring>slm2RotationSpinBox</cstring>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="slm2RotationSpinBox">
+                        <property name="toolTip">
+                         <string>支持任意角度，例如 45°；正值顺时针，负值逆时针。先翻转再旋转，保留完整图像。暂停播放或停止录像后可调整。</string>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-180.0</double>
+                        </property>
+                        <property name="maximum">
+                         <double>180.0</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.0</double>
+                        </property>
+                        <property name="value">
+                         <double>0.0</double>
+                        </property>
+                        <property name="suffix">
+                         <string> °</string>
+                        </property>
+                        <property name="keyboardTracking">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2FlipLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="slm2HorizontalFlipCheckBox">
+                        <property name="text">
+                         <string>水平翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像左右镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="slm2VerticalFlipCheckBox">
+                        <property name="text">
+                         <string>垂直翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像上下镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
                      <layout class="QHBoxLayout" name="slm2NavigationLayout">
                       <property name="spacing">
                        <number>4</number>
@@ -3064,6 +3803,84 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                        </property>
                       </item>
                      </widget>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="ccdRotationLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="ccdRotationLabel">
+                        <property name="text">
+                         <string>旋转角度</string>
+                        </property>
+                        <property name="buddy">
+                         <cstring>ccdRotationSpinBox</cstring>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="ccdRotationSpinBox">
+                        <property name="toolTip">
+                         <string>支持任意角度，例如 45°；正值顺时针，负值逆时针。先翻转再旋转，保留完整图像。暂停播放或停止录像后可调整。</string>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-180.0</double>
+                        </property>
+                        <property name="maximum">
+                         <double>180.0</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>1.0</double>
+                        </property>
+                        <property name="value">
+                         <double>0.0</double>
+                        </property>
+                        <property name="suffix">
+                         <string> °</string>
+                        </property>
+                        <property name="keyboardTracking">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="ccdFlipLayout">
+                      <property name="spacing">
+                       <number>6</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="ccdHorizontalFlipCheckBox">
+                        <property name="text">
+                         <string>水平翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像左右镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="ccdVerticalFlipCheckBox">
+                        <property name="text">
+                         <string>垂直翻转</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>先将原始图像上下镜像，再执行旋转。修改后应用到实际输出；CCD 同时影响预览、保存和录像。</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                     <item>
                      <layout class="QHBoxLayout" name="ccdExposureSpinBoxLayout">

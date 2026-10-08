@@ -13,6 +13,8 @@ python -m tools.apps.optical_control
 
 需要 `requirements-gui.txt` 中的依赖。运行步骤、软件同步行为与设备参数说明见 [MainWindow 使用说明](ui/README.md)。
 
+参数页支持独立配置 F4321 网络 DMD，与原有显示输出 DMD 二选一，共用第二页预览和操作。两者均可使用 8 位灰度、1 位二值及输入范围转换；F4321 自动生成并上传 BMP 副本，源文件保持不变。网络参数、板载曝光与软件切换间隔见 [F4321 使用说明](ui/README.md#f4321-dmd-与共用输入转换)。
+
 ## 代码结构与开发约定
 
 本次重构移除了根目录旧脚本，不提供兼容入口。请在项目根目录用 `python -m tools.<目录>.<模块>` 运行下文命令，不要直接执行包内文件。
@@ -26,12 +28,14 @@ tools/
       controller.py         # 图像校验、显示选择等业务操作
     magicholo_slm/           # MagicHolo SLM2，同样分 sdk / controller
     dvp2_camera/            # DVP2 相机，同样分 sdk / controller
+    f4321_dmd/              # F4321 网络 DMD，SDK 绑定与缓存播放
     dmd_display/
       controller.py         # Tkinter 全屏显示、显示器枚举
   processing/               # 棋盘格生成、CCD 视频校正、图像旋转
   utils/
     paths.py                # 项目、tools、SDK 根路径与路径解析
     images.py               # 数字文件名排序
+    dmd_images.py           # DMD 输入位深与灰度转换
   tests/                    # 不连接硬件的回归测试
   3rdparty/                 # 厂商原始库，禁止修改
 ```
@@ -116,7 +120,7 @@ SDK 控制脚本面向 Windows，使用与 DLL 匹配的 64 位 Python。实际�
 
 相机脚本用 `ctypes` 调用官方 DLL，没有使用随附的 Python 3.6 专用 `dvp.pyd`。安装设备驱动及 SDK 所需运行库，并保留 DLL 配套依赖；发现 DLL 文件不等于依赖已完整。
 
-将设备作为扩展显示屏连接，先枚举索引再播放。中科微兴使用 Windows Monitor 索引，MagicHolo 使用 HDSLM SDK display ID，两个数字不能互换。DMD 工具也是显示输出程序，不是 DMD 厂商的高速二值图案/触发控制接口。
+显示输出设备作为扩展显示屏连接，先枚举索引再播放。中科微兴使用 Windows Monitor 索引，MagicHolo 使用 HDSLM SDK display ID，两个数字不能互换。原有 DMD 命令行工具使用显示输出；GUI 新增的 F4321 DMD 使用厂商 SDK 和网络传输，单独配置 IP、端口及 SDK 设备 ID。
 
 ## 4. 首次连接与对准
 

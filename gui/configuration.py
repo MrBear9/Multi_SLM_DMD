@@ -41,6 +41,20 @@ def apply_values(window, values):
     if not isinstance(values, dict):
         raise ValueError('配置 values 必须是 JSON 对象。')
     controls = editors(window)
+    values = dict(values)
+    for name, default in {'f4321EnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
+                          'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
+                          'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
+                          'dmdWhiteLevelSpinBox': 65535.0}.items():
+        if name in controls:
+            values.setdefault(name, default)
+    if values.get('dmdEnabledCheckBox', False) and values.get('f4321EnabledCheckBox', False):
+        raise ValueError('第二页只有一路 DMD 预览，请只启用一种 DMD 硬件。')
+    # Older configuration files predate the orientation controls.
+    transform_suffixes = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
+    for name in controls:
+        if name.endswith(transform_suffixes):
+            values.setdefault(name, 0.0 if name.endswith('RotationSpinBox') else False)
     for name, value in values.items():
         if name not in controls:
             raise ValueError(f'未知配置字段：{name}')
@@ -57,16 +71,27 @@ def apply_values(window, values):
                 valid = valid and type(value) is int
         if not valid:
             raise ValueError(f'配置字段 {name} 的值无效：{value!r}')
-    for name, value in values.items():
-        w = controls[name]
-        if isinstance(w, QtWidgets.QLineEdit):
-            w.setText(value)
-        elif isinstance(w, QtWidgets.QCheckBox):
-            w.setChecked(value)
-        elif isinstance(w, QtWidgets.QComboBox):
-            w.setCurrentText(value)
-        else:
-            w.setValue(value)
+    # Apply a complete orientation together; changing one field must not send
+    # an intermediate pattern while the rest of the document is being loaded.
+    blockers = [QtCore.QSignalBlocker(w) for name, w in controls.items()
+                if name.endswith(transform_suffixes) or name.startswith('f4321')
+                or name in ('dmdEnabledCheckBox', 'dmdPixelModeComboBox', 'dmdThresholdSpinBox',
+                            'dmdDitherCheckBox', 'dmdInputRangeComboBox',
+                            'dmdBlackLevelSpinBox', 'dmdWhiteLevelSpinBox')]
+    try:
+        for name, value in values.items():
+            w = controls[name]
+            if isinstance(w, QtWidgets.QLineEdit):
+                w.setText(value)
+            elif isinstance(w, QtWidgets.QCheckBox):
+                w.setChecked(value)
+            elif isinstance(w, QtWidgets.QComboBox):
+                w.setCurrentText(value)
+            else:
+                w.setValue(value)
+    finally:
+        for blocker in blockers:
+            blocker.unblock()
 
 
 def write_configuration(path: Path, values: dict):
@@ -95,13 +120,18 @@ def input_path(value: str) -> Path:
 
 def pil_qimage(path: Path) -> QtGui.QImage:
     with Image.open(path) as image:
-        if image.mode.startswith('I;16'):
-            data = np.array(image, dtype=np.uint16, order='C')
-            return QtGui.QImage(data.data, data.shape[1], data.shape[0], data.strides[0],
-                                QtGui.QImage.Format_Grayscale16).copy()
-        image = image.convert('RGBA')
-        data = image.tobytes()
-        return QtGui.QImage(data, image.width, image.height, image.width * 4,
+        return pil_image_qimage(image)
+
+
+def pil_image_qimage(image: Image.Image) -> QtGui.QImage:
+    """Copy pixels from an already transformed image into Qt-owned storage."""
+    if image.mode.startswith('I;16'):
+        data = np.array(image, dtype=np.uint16, order='C')
+        return QtGui.QImage(data.data, data.shape[1], data.shape[0], data.strides[0],
+                            QtGui.QImage.Format_Grayscale16).copy()
+    with image.convert('RGBA') as rgba:
+        data = rgba.tobytes()
+        return QtGui.QImage(data, rgba.width, rgba.height, rgba.width * 4,
                             QtGui.QImage.Format_RGBA8888).copy()
 
 

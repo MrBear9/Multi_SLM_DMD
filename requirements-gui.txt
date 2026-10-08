@@ -1,4 +1,26 @@
+# tools 自有代码的运行依赖与 PyInstaller 打包工具。
+# 代码需要 Python 3.10+；建议使用已验证的 Windows x64 / Python 3.10 环境。
+# 在 tools 目录安装：python -m pip install -r requirements-gui.txt
+# 在项目根目录安装：python -m pip install -r tools/requirements-gui.txt
+
+# Qt 主界面、预览窗口及 .ui 加载。
 PyQt5>=5.15,<6
+
+# 图像数组、灰度数据及相机帧处理。
 numpy>=1.23
-Pillow>=9
+
+# 图像读写、原始像素画布和 Tkinter 图像显示。
+Pillow>=9.1
+
+# 相机图像、视频读写及命令行交互预览；使用带 GUI 的版本。
+# 不要同时安装 opencv-python-headless 或其他 cv2 发行包。
 opencv-python>=4.6
+
+# 构建工具：用于生成 EXE，程序运行本身不依赖它。
+# pip 会自动安装 pyinstaller-hooks-contrib 等传递依赖。
+PyInstaller>=6,<7
+
+# 非 pip 依赖：
+# - 部分 DMD 命令行工具需要 Tkinter/Tcl/Tk；Conda 环境可安装 tk。
+# - 真实硬件需要 tools/3rdparty 中对应 SDK、配套 DLL、设备驱动及运行库。
+# - 打包需包含 tools/ui/MainWindow.ui；详见 tools/ui/README.md。

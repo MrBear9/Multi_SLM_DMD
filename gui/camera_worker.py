@@ -15,6 +15,7 @@ from PyQt5 import QtCore
 
 from ..devices.dvp2_camera import sdk as dvp
 from ..devices.dvp2_camera import controller as camera
+from ..utils.image_transforms import ImageTransform
 from .configuration import input_path
 
 
@@ -137,6 +138,7 @@ class CameraWorker(QtCore.QThread):
         self.commands = queue.Queue()
         self.lock = threading.Lock()
         self.latest = None
+        self.transform = ImageTransform.from_settings(settings, 'ccd')
 
     def submit(self, action, *args):
         self.commands.put((action, args))
@@ -154,6 +156,7 @@ class CameraWorker(QtCore.QThread):
         last_frame_at = last_warning_at = time.monotonic()
         last_video_at = 0.0
         current_image = None
+        current_raw = current_metadata = None
         try:
             backend = self.factory(self.settings)
             parameters = backend.open()
@@ -175,6 +178,28 @@ class CameraWorker(QtCore.QThread):
                             pending.clear()
                         elif action == 'cancel_auto_captures':
                             pending[:] = [request for request in pending if not request.metadata.get('automatic')]
+                        elif action == 'transform':
+                            transform = args[0]
+                            if not isinstance(transform, ImageTransform):
+                                raise TypeError('CCD 图像变换参数无效。')
+                            if transform == self.transform:
+                                continue
+                            if recorder.active:
+                                raise RuntimeError('请先停止录像，再调整 CCD 旋转或翻转。')
+                            # Prepare before replacing state. A queued record_start
+                            # must see the new dimensions even before the next read.
+                            transformed = (transform.apply_array(current_raw)
+                                           if current_raw is not None else None)
+                            self.transform = transform
+                            current_image = transformed
+                            if current_metadata is not None:
+                                current_metadata = {**current_metadata,
+                                                    'image_transform': transform.as_dict()}
+                                with self.lock:
+                                    self.latest = (current_image, current_metadata)
+                            if pending:
+                                pending.clear()
+                                self.warning.emit('CCD 图像方向已更改，待处理的采集已取消，请重新采集。')
                         elif action == 'record_start':
                             if current_image is None:
                                 raise RuntimeError('尚未收到相机帧。')
@@ -201,7 +226,7 @@ class CameraWorker(QtCore.QThread):
                             self.recordingChanged.emit(recorder.active, str(recording_path or ''))
                 read_started = time.monotonic()
                 try:
-                    image, metadata = backend.read()
+                    raw_image, raw_metadata = backend.read()
                 except TimeoutError:
                     now = time.monotonic()
                     if now - last_frame_at >= self.settings['ccdTimeoutSpinBox'] / 1000 and now - last_warning_at >= 2:
@@ -212,9 +237,17 @@ class CameraWorker(QtCore.QThread):
                             pending.remove(request)
                             self.warning.emit(f'采集超时，未保存：{request.path.name}')
                     continue
+                # Preserve camera pixel values and channel ordering. Preview,
+                # PNG captures and AVI recording all consume this same result.
+                current_raw = np.array(raw_image, copy=True, order='C')
+                image = self.transform.apply_array(current_raw)
                 current_image = image
                 last_frame_at = time.monotonic()
-                metadata['received_at_monotonic'] = last_frame_at
+                metadata = {**raw_metadata,
+                            'received_at_monotonic': last_frame_at,
+                            'raw_shape': list(current_raw.shape),
+                            'image_transform': self.transform.as_dict()}
+                current_metadata = metadata
                 with self.lock:
                     self.latest = (image, metadata)
                 if recorder.active and last_frame_at - last_video_at >= 1 / recorder.fps:

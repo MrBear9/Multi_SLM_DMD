@@ -4,20 +4,20 @@
 
 ## 启动
 
-从项目根目录运行：
+以下安装、启动和打包命令均在 `tools` 目录执行：
 
 ```powershell
-python -m pip install -r tools/requirements-gui.txt
-python -m tools.apps.optical_control
+python -m pip install -r requirements-gui.txt
+python .\apps\optical_control.py
 ```
 
 不连接设备的演示模式：
 
 ```powershell
-python -m tools.apps.optical_control --demo
+python .\apps\optical_control.py --demo
 ```
 
-也支持直接运行入口文件：
+如果当前位于项目根目录，也支持：
 
 ```powershell
 python .\tools\apps\optical_control.py --demo
@@ -28,10 +28,52 @@ python .\tools\apps\optical_control.py --demo
 载入保存的配置：
 
 ```powershell
-python -m tools.apps.optical_control --config output/optical_config.json
+python .\apps\optical_control.py --config ..\output\optical_config.json
 ```
 
 本机的 `xwq` 环境及 `D:\software\python31011\python.exe` 均已检查过 PyQt5、NumPy、Pillow、OpenCV 可用。其他环境缺少依赖时，使用上面的安装命令。
+
+## 干净环境与自行打包
+
+`tools/requirements-gui.txt` 覆盖 `tools` 自有 GUI、设备封装、命令行及图像处理代码的 pip 运行依赖，并包含 PyInstaller 构建工具。运行依赖为 PyQt5、NumPy、Pillow 和 opencv-python；各包的传递依赖由 pip 自动安装。该清单不覆盖 `3rdparty` 内厂商示例或主项目的训练、推理代码。
+
+可按已验证的 Python 3.10 创建独立 Windows 64 位环境，在 `tools` 目录执行。已有 `(pyqt)` 环境时跳过前两行：
+
+```powershell
+conda create -n optical-tools python=3.10 pip tk -y
+conda activate optical-tools
+python -m pip install -r requirements-gui.txt
+python -m pip check
+python .\apps\optical_control.py --demo
+```
+
+`tk` 为部分 DMD 命令行工具提供 Tkinter/Tcl/Tk；Qt 主界面使用 PyQt5。Tkinter、ctypes、msvcrt、unittest 等随 Python/其运行环境提供，不应作为同名 pip 包加入清单。当前工具未使用 PyTorch、SciPy、PyYAML 或 pywin32，无需因主项目的训练环境而一并安装。
+
+### 在 tools 目录打包 GUI
+
+使用目录模式生成 EXE，厂商 SDK 保持外置：
+
+```powershell
+python -m PyInstaller --onedir --windowed --name MainWindow --paths .. --hidden-import tools.gui.main_window --add-data "ui/MainWindow.ui:tools/ui" .\apps\optical_control.py
+```
+
+`--paths ..` 指向包含 `tools` 包的项目根目录；入口文件、资源源路径则相对于当前 `tools` 目录。`tools/ui` 是打包后的资源目标路径，需要保留这个包目录层级。生成后先检查演示模式：
+
+```powershell
+.\dist\MainWindow\MainWindow.exe --demo
+```
+
+发布时携带整个 `dist/MainWindow` 文件夹。上面的命令包含 GUI 资源；真实硬件连接时，在参数页为外置 SDK/DLL 选择绝对路径，并将输出目录设置到可写的固定位置。
+
+自行配置打包时需要保留这些资源和路径（下面的源码位置按项目根目录描述）：
+
+- GUI 入口：`tools/apps/optical_control.py`。PyInstaller 的模块搜索路径包含项目根目录，并显式收集 `tools.gui.main_window`，避免入口的相对导入被静态分析遗漏。
+- 界面：将 `tools/ui/MainWindow.ui` 作为数据文件收集到包内同名路径 `tools/ui/MainWindow.ui`。
+- 硬件库：SLM、CCD 和 F4321 SDK 由 ctypes 按配置路径加载。按原有目录结构收集实际设备所需的 DLL 及配套文件，或在配置页指定外置 SDK 的绝对路径；目标电脑仍需安装厂商设备驱动和运行库。不要修改 `tools/3rdparty` 原始文件。
+- 数据目录：打包后将输入、输出和外置 SDK 路径配置为绝对路径。当前相对路径基于包资源根目录解析，单文件模式下该目录可能是临时解压目录，不适合保存实验结果。
+- 对准图案生成工具另外引用主项目的 `models/SLM/physical_defaults.py`；独立携带该工具时需保留这个源码模块。GUI 入口没有这个依赖。
+
+PyInstaller 与 hooks 的安装说明见[官方文档](https://pyinstaller.org/en/stable/installation.html)；资源位置和手动收集 DLL 的规则见[运行时路径](https://pyinstaller.org/en/stable/runtime-information.html)与[ctypes 依赖](https://pyinstaller.org/en/stable/feature-notes.html#ctypes-dependencies)。本次仅整理依赖和打包说明，未生成或验证 EXE。
 
 ## 使用流程
 
@@ -57,6 +99,39 @@ python -m tools.apps.optical_control --config output/optical_config.json
 - 勾选“保存采集记录”会在输出目录追加 `captures.jsonl`，记录文件名、相机帧号、曝光、增益、图像格式及当时的输入图案。
 - DMD 和 SLM 画面显示软件发送的图案，不是从调制器读取的光学反馈。CCD 显示相机采集帧。
 
+## F4321 DMD 与共用输入转换
+
+第一页新增独立的“DMD · F4321 高速控制器”硬件卡，原有 DMD 保留为显示输出设备。两种 DMD 每次启用一种，勾选其中一种会取消另一种；它们各自保留输入路径，并共用第二页 DMD 预览和控制。
+
+1. 启用 F4321，选择图像文件或目录、`F4321_HS.dll`。默认 DLL 位于 `tools/3rdparty/F4321_HS_FG/DLL_Python_2`，要求 Windows 64 位 Python。新增封装无需额外 pip 包。
+2. 本机 IP 填实际连接 DMD 的网卡 IPv4 地址，目标 IP/端口填控制器设置。设备 ID 为 SDK 内部的 1～3，与 Windows 显示器编号无关。预填网络值只是示例。
+3. 在共用转换卡选择“8 位灰度”或“1 位二值”。“保持原图”只适用于原有显示输出 DMD。二值阈值按转换后的 0～255 灰度计算；启用抖动时使用 Floyd–Steinberg 算法，阈值不参与计算。
+4. 默认按源位深映射：8 位范围为 0～255，16 位为 0～65535，不对每张图单独拉伸。自定义范围将黑、白电平映射至 0 和 255，并截断范围外的值。浮点或无法判断有效位深的整数图需要自定义范围；彩色图先转亮度灰度。
+5. 连接时先查询实际面板尺寸及就绪状态，再在临时目录生成 BMP 副本并后台上传。每张图先转换位深、翻转、旋转，再按原始像素居中填入完整黑底面板。尺寸超出面板会拒绝上传，不自动缩放或裁切；输入文件始终保持不变。
+6. 上传完成后使用第二页的上一张、下一张、帧号、播放、暂停及旋转/翻转。修改方向会暂停播放并重新上传整个序列；“重新上传”可重新读取源文件。上传时可取消，失败后按提示断开再连接。
+
+**时间设置：** 第一页的曝光、暗场时间为板载灰度图的周期参数（界面单位 µs，SDK 单位 5 ns）；第二页的播放间隔控制应用多久切换到下一张输入图，不能短于曝光与暗场时间之和。程序将一张 8 位图作为八个二值位面循环输出，到下一次软件切换时才更换图像。“暂停”暂停切图和自动采集，保留当前图像的板载循环以维持灰度；“停止全部”或断开设备才发送控制器停止指令。DMD 与 CCD 仍使用前述软件同步采集，未接入 F4321 外部触发和高速整段序列采集。
+
+程序等待设备的接收反馈后才允许播放；仅 UDP 初始化成功不会标记设备在线。接收超时会显示预期数据量和最后反馈。取消或上传异常会先释放 SDK 再清理临时 BMP；如果 SDK 释放失败，保留文件与连接对象供重试断开，避免厂商线程仍在读取时删除文件。普通断开不会发送需要重新上电的 Float 指令。
+
+新增流程已用模拟 SDK 验证；本机未连接 F4321 实物，设备固件反馈、实际曝光和光学显示效果仍需实机验收。
+
+SDK 会保留查询缓存，因此断开时在 `DeInit` 成功后释放 DLL，重新连接时重新加载。上传前检查临时目录枚举顺序，避免厂商按目录顺序读取 BMP 导致帧号错配。上传完成反馈 `Rec Pic Data Num` 当前按图像有效载荷字节数严格校验；厂商文档未明确该字段单位，此处仍需实板核对。若固件反馈不同，程序会报接收超时并保留反馈文字，不会将缓存标记为可播放。
+
+## 图像旋转与翻转
+
+第二页四个设备均可独立设置旋转角度、水平翻转和垂直翻转。修改角度并按 Enter 或移开焦点后应用；翻转勾选后应用。默认角度为 0°，正值顺时针，负值逆时针；水平翻转是左右镜像，垂直翻转是上下镜像。
+
+- 顺序为：对原图水平/垂直翻转，再绕图像中心旋转，最后居中放入固定面板并应用 SLM 偏移。背景画布和显示窗口的位置保持固定，修改多次都从原图重新计算。
+- DMD 的实际全屏输出、SLM2 的 SDK 像素缓冲区、SLM1 交给 SDK 的临时图像都使用变换结果。预览和设备输出使用同一变换算法；有效区尺寸显示旋转后的外接矩形。
+- 任意角度旋转会扩展有效区，空白处补背景。采用最近邻采样，避免插值产生新的相位灰度；直角旋转和翻转是精确像素重排。斜角仍有像素采样造成的锯齿或重复，不能代替物理像元的旋转。
+- 旋转后及偏移后必须完整容纳于面板，不自动缩放或裁切。例如 640×640 旋转 45° 后约为 906×906，可以放入 1920×1080；768×768 旋转 45° 后约为 1088×1088，会超过面板高度并拒绝应用。修改失败会恢复先前角度/翻转状态，保留原预览。
+- CCD 在获取真实相机帧后执行软件变换，预览、保存 PNG 和录像方向一致；PNG 保持原始位深和通道，录像继续使用原有 8 bit MJPG 编码。相机传感器 ROI 和原始采集尺寸不变，PNG 与录像尺寸可能随旋转扩展。采集记录包含变换参数、原始尺寸及输出尺寸。
+- 对应设备播放时锁定方向控件；双 SLM 同步播放时同时锁定两路。DMD 同步采集运行期间锁定四路方向；CCD 录像期间锁定 CCD 方向，停止后可改。修改 CCD 方向会取消尚未完成的保存请求并提示，避免保存到错误方向。
+- 方向参数随 JSON 配置保存；旧配置未包含这些字段时使用 0°、不翻转。仅在未连接时可载入配置。
+
+当前变换已接入真实硬件调用路径，并通过模拟 SDK 接收数据的测试；实际设备显示效果和实验光路仍需在现场验证。
+
 ## 参数和设备约定
 
 - 相对路径统一以项目根目录解析；厂商原始文件仍在 `tools/3rdparty`，未改动。
@@ -74,6 +149,11 @@ tools/
   gui/main_window.py           # MainWindow 控制器与播放调度
   gui/configuration.py         # 配置序列化、图像与 Qt 转换
   gui/displays.py              # Qt DMD 窗口及两种 SLM 适配器
+  gui/dmd_backends.py          # DMD 类型与适配器选择
+  gui/f4321_display.py         # F4321 图像暂存、上传与预览接口
+  gui/device_task.py           # 设备连接、上传后台任务
+  devices/f4321_dmd/           # F4321 ctypes SDK 与缓存播放控制器
+  utils/dmd_images.py          # 两种 DMD 共用的位深/灰度转换
   gui/camera_worker.py         # 单独线程中的 CCD 取帧、参数、保存、录像
   ui/MainWindow.ui            # Qt Designer 布局
   requirements-gui.txt         # GUI 可选依赖

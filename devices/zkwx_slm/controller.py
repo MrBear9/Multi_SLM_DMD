@@ -12,6 +12,7 @@ from .sdk import (
     ZhongkeTimeoutSDK,
 )
 from ...utils.images import natural_image_key
+from ...utils.image_transforms import ImageTransform
 
 
 def print_monitors(monitors: list[Monitor], selected_index: int | None = None) -> None:
@@ -74,16 +75,19 @@ def collect_images(input_path: Path, start_id: str | None, limit: int | None) ->
         raise FileNotFoundError(f"Input image or directory not found: {input_path}")
     return paths if limit is None else paths[:limit]
 
-def validate_images(paths: list[Path], monitor: Monitor) -> tuple[int, int]:
+def validate_images(paths: list[Path], monitor: Monitor,
+                    transform: ImageTransform | None = None) -> tuple[int, int]:
+    transform = transform or ImageTransform()
     expected_size: tuple[int, int] | None = None
     for path in paths:
         with Image.open(path) as image:
             image.verify()
             size = (int(image.width), int(image.height))
             mode = image.mode
-        if size[0] > monitor.width or size[1] > monitor.height:
+        output_size = transform.output_size(size)
+        if output_size[0] > monitor.width or output_size[1] > monitor.height:
             raise ValueError(
-                f"{path.name} is {size[0]}x{size[1]}, larger than selected SLM region "
+                f"{path.name} after rotation is {output_size[0]}x{output_size[1]}, larger than selected SLM region "
                 f"{monitor.width}x{monitor.height}. Stretching/cropping is disabled."
             )
         if expected_size is None:
@@ -99,7 +103,7 @@ def validate_images(paths: list[Path], monitor: Monitor) -> tuple[int, int]:
             )
     if expected_size is None:
         raise RuntimeError("No image was selected.")
-    return expected_size
+    return transform.output_size(expected_size)
 
 
 def canvas_origin(
@@ -123,6 +127,7 @@ def prepare_canvas(
     monitor: Monitor,
     offset_x: int = 0,
     offset_y: int = 0,
+    transform: ImageTransform | None = None,
 ) -> Image.Image:
     """Keep source grayscale values on a full-size black panel without resampling.
 
@@ -133,7 +138,9 @@ def prepare_canvas(
         image.load()
         if image.mode not in {"1", "L", "I", "I;16"}:
             raise ValueError(f"SLM1 phase image must be single-channel grayscale: {path}")
-        origin = canvas_origin(image.size, monitor, offset_x, offset_y)
-        canvas = Image.new(image.mode, (monitor.width, monitor.height), color=0)
-        canvas.paste(image, origin)
-        return canvas
+        transform = transform or ImageTransform()
+        origin = canvas_origin(transform.output_size(image.size), monitor, offset_x, offset_y)
+        with transform.apply_pil(image) as oriented:
+            canvas = Image.new(image.mode, (monitor.width, monitor.height), color=0)
+            canvas.paste(oriented, origin)
+            return canvas

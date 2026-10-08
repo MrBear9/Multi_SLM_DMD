@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import partial
+import ipaddress
 from pathlib import Path
 import tempfile
 import time
@@ -17,23 +18,30 @@ from ..devices.magicholo_slm import sdk as magic
 from ..devices.magicholo_slm import controller as magic_images
 from ..devices.dvp2_camera import sdk as dvp
 from ..utils.paths import TOOLS_ROOT
+from ..utils.image_transforms import ImageTransform
+from ..utils.dmd_images import DmdImageOptions, prepare_image
 from .configuration import (read_values, apply_values, read_configuration,
-                            write_configuration, input_path, pil_qimage,
+                            write_configuration, input_path, pil_image_qimage,
                             camera_qimage, set_preview)
-from .displays import DisplayAdapter
+from .dmd_backends import DMD_BACKENDS, selected_dmd, create_display
+from .device_task import DeviceTask
 from .camera_worker import CameraWorker, CaptureRequest
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
+TRANSFORM_SUFFIXES = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, demo=False, config_path=None, display_factory=DisplayAdapter,
+    def __init__(self, demo=False, config_path=None, display_factory=create_display,
                  camera_factory=CameraWorker):
         super().__init__()
         uic.loadUi(str(TOOLS_ROOT / 'ui' / 'MainWindow.ui'), self)
         self.demo = demo
         self.display_factory, self.camera_factory = display_factory, camera_factory
         self.devices = {}
+        self.device_task = None
+        self.pending_devices = {}
+        self.task_success = self.task_failure = None
         self.paths = {key: [] for key in DISPLAY_KEYS}
         self.indices = dict.fromkeys(DISPLAY_KEYS, 0)
         self.images = {}
@@ -44,6 +52,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.received_frames = self.saved_frames = 0
         self.last_frame_time = None
         self.settings = None
+        self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
         self.demo_directory = None
         self.timers = {}
         for key in DISPLAY_KEYS:
@@ -52,18 +61,31 @@ class MainWindow(QtWidgets.QMainWindow):
             timer.timeout.connect(partial(self.guard, partial(self.advance, key)))
             self.timers[key] = timer
             getattr(self, key + 'PlayButton').clicked.connect(partial(self.guard, partial(self.play, key)))
-            getattr(self, key + 'PauseButton').clicked.connect(partial(self.pause, key))
+            getattr(self, key + 'PauseButton').clicked.connect(partial(self.guard, partial(self.pause, key)))
             getattr(self, key + 'NextButton').clicked.connect(partial(self.guard, partial(self.step, key, 1)))
             getattr(self, key + 'PreviousButton').clicked.connect(partial(self.guard, partial(self.step, key, -1)))
             getattr(self, key + 'FrameSpinBox').valueChanged.connect(partial(self.select_frame, key))
             getattr(self, key + 'InputPathEdit').editingFinished.connect(partial(self.reload_safely, key))
+        self.f4321InputPathEdit.editingFinished.connect(partial(self.reload_safely, 'dmd'))
+        for backend in DMD_BACKENDS:
+            getattr(self, backend.enabled_field).toggled.connect(partial(self.dmd_backend_changed, backend.name))
+        for name in ('dmdPixelModeComboBox', 'dmdInputRangeComboBox'):
+            getattr(self, name).currentIndexChanged.connect(self.dmd_conversion_changed)
+        self.dmdDitherCheckBox.toggled.connect(self.dmd_conversion_changed)
+        for name in ('dmdThresholdSpinBox', 'dmdBlackLevelSpinBox', 'dmdWhiteLevelSpinBox'):
+            getattr(self, name).editingFinished.connect(self.dmd_conversion_changed)
+        self.dmdUploadButton.clicked.connect(partial(self.guard, self.reupload_dmd))
         for key in (*DISPLAY_KEYS, 'ccd'):
             getattr(self, key + 'ZoomComboBox').currentIndexChanged.connect(partial(self.refresh_preview, key))
             getattr(self, key + 'EnabledCheckBox').toggled.connect(self.update_actions)
+            getattr(self, key + 'RotationSpinBox').valueChanged.connect(partial(self.transform_changed, key))
+            for suffix in ('HorizontalFlipCheckBox', 'VerticalFlipCheckBox'):
+                getattr(self, key + suffix).toggled.connect(partial(self.transform_changed, key))
         for key in DISPLAY_KEYS:
             getattr(self, key + 'PreviewModeComboBox').currentIndexChanged.connect(partial(self.refresh_preview, key))
         for name in ('dmdInputPathEdit', 'slm1InputPathEdit', 'slm2InputPathEdit',
-                     'slm1SdkPathEdit', 'slm2SdkPathEdit', 'ccdDllPathEdit', 'outputDirectoryEdit'):
+                     'slm1SdkPathEdit', 'slm2SdkPathEdit', 'ccdDllPathEdit', 'outputDirectoryEdit',
+                     'f4321InputPathEdit', 'f4321DllPathEdit'):
             getattr(self, name + 'BrowseButton').clicked.connect(partial(self.browse, name))
         self.loadConfigurationButton.clicked.connect(self.load_dialog)
         self.saveConfigurationButton.clicked.connect(self.save_dialog)
@@ -89,6 +111,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setup_demo()
         if config_path:
             apply_values(self, read_configuration(config_path))
+        self.sync_transform_values()
+        self.update_dmd_labels()
         for key in DISPLAY_KEYS:
             self.reload_safely(key)
         self.update_actions()
@@ -103,6 +127,83 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, '操作未完成', str(exc))
             return None
 
+    def device_enabled(self, key, values=None):
+        values = read_values(self) if values is None else values
+        return selected_dmd(values) is not None if key == 'dmd' else values[key + 'EnabledCheckBox']
+
+    def dmd_input_field(self):
+        backend = selected_dmd(read_values(self))
+        return backend.input_field if backend else 'dmdInputPathEdit'
+
+    def dmd_backend_changed(self, name, checked):
+        if checked:
+            for backend in DMD_BACKENDS:
+                if backend.name != name:
+                    control = getattr(self, backend.enabled_field)
+                    with QtCore.QSignalBlocker(control):
+                        control.setChecked(False)
+        if hasattr(self, 'poll_timer'):
+            self.update_dmd_labels()
+            self.reload_safely('dmd')
+
+    def update_dmd_labels(self):
+        backend = selected_dmd(read_values(self))
+        self.dmdTitleLabel.setText(backend.title if backend else 'DMD · 未启用')
+        is_network = backend is not None and backend.name == 'f4321'
+        self.dmdUploadButton.setVisible(is_network)
+        self.dmdDeviceInfoLabel.setVisible(is_network)
+        self.dmdShowCursorCheckBox.setVisible(not is_network)
+        self.dmdOutputHintLabel.setText('缓存 BMP · 原始像素' if is_network else '原始像素 · 居中输出')
+        self.update_conversion_controls()
+
+    def update_conversion_controls(self):
+        mode = self.dmdPixelModeComboBox.currentText()
+        convert = mode != '保持原图'
+        binary = mode == '1 位二值'
+        self.dmdDitherCheckBox.setEnabled(binary)
+        self.dmdThresholdSpinBox.setEnabled(binary and not self.dmdDitherCheckBox.isChecked())
+        self.dmdInputRangeComboBox.setEnabled(convert)
+        custom = convert and self.dmdInputRangeComboBox.currentText() == '自定义范围'
+        self.dmdBlackLevelSpinBox.setEnabled(custom)
+        self.dmdWhiteLevelSpinBox.setEnabled(custom)
+
+    def dmd_conversion_changed(self, *_):
+        self.update_conversion_controls()
+        if hasattr(self, 'poll_timer'):
+            self.reload_safely('dmd')
+
+    def network_dmd(self):
+        device = self.devices.get('dmd')
+        return device if self.f4321EnabledCheckBox.isChecked() and device is not None else None
+
+    def start_device_task(self, action, success, failure):
+        if self.device_task is not None:
+            raise ValueError('设备正在连接或上传，请等待完成。')
+        self.task_success, self.task_failure = success, failure
+        self.device_task = DeviceTask(action, self)
+        self.device_task.finished.connect(self.finish_device_task)
+        self.device_task.start()
+        self.update_actions()
+
+    def finish_device_task(self):
+        task, self.device_task = self.device_task, None
+        success, failure = self.task_success, self.task_failure
+        self.task_success = self.task_failure = None
+        cancelled = task.isInterruptionRequested() or self.closing
+        try:
+            if task.error or cancelled:
+                failure(task.error or '设备操作已取消。')
+            else:
+                try:
+                    success(task.result)
+                except Exception as exc:
+                    failure(str(exc))
+        finally:
+            task.deleteLater()
+            self.update_actions()
+            if self.closing and self.camera is None and not self.devices and not self.pending_devices:
+                self.close()
+
     def setup_demo(self):
         self.demo_directory = tempfile.TemporaryDirectory(prefix='optical_gui_demo_')
         root = Path(self.demo_directory.name)
@@ -114,6 +215,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 pixels = (((x + index * 16) // 32 + y // 32) % 2 * 128).astype(np.uint8)
                 Image.fromarray(pixels).save(folder / f'{index + 1:04d}.png')
             getattr(self, key + 'InputPathEdit').setText(str(folder))
+            if key == 'dmd':
+                self.f4321InputPathEdit.setText(str(folder))
         self.outputDirectoryEdit.setText('output/gui_demo')
         self.setWindowTitle('MainWindow · 演示模式（未连接真实硬件）')
         self.subtitleLabel.setText('演示模式 · DMD / SLM 使用示例图案，CCD 为合成画面')
@@ -132,14 +235,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择图像目录', current)
             else:
                 return
-        elif name == 'ccdDllPathEdit':
-            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择相机 DLL', current, 'DLL (*.dll)')
+        elif name in ('ccdDllPathEdit', 'f4321DllPathEdit'):
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择设备 DLL', current, 'DLL (*.dll)')
         else:
             path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择目录', current)
         if path:
             getattr(self, name).setText(path)
             if name.endswith('InputPathEdit'):
-                self.reload_safely(name.split('Input')[0])
+                self.reload_safely('dmd' if name == 'f4321InputPathEdit' else name.split('Input')[0])
 
     def load_dialog(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '载入配置', '', 'JSON (*.json)')
@@ -147,10 +250,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.guard(partial(self.load_config, Path(path)))
 
     def load_config(self, path):
-        if self.connected or self.camera is not None:
+        if self.connected or self.camera is not None or self.device_task is not None:
             raise ValueError('请先断开设备，再载入配置。')
         self.stop_all()
         apply_values(self, read_configuration(path))
+        self.sync_transform_values()
+        self.update_dmd_labels()
         for key in DISPLAY_KEYS:
             self.reload_safely(key)
         self.statusBar().showMessage(f'已载入配置：{path}')
@@ -161,7 +266,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.guard(lambda: write_configuration(Path(path), read_values(self)))
 
     def reload_safely(self, key):
-        if self.connected:
+        if self.connected or self.device_task is not None:
             return
         try:
             self.load_sequence(key)
@@ -176,7 +281,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def load_sequence(self, key):
         self.pause(key)
-        path = input_path(getattr(self, key + 'InputPathEdit').text())
+        field = self.dmd_input_field() if key == 'dmd' else key + 'InputPathEdit'
+        path = input_path(getattr(self, field).text())
         paths = image_files.collect_images(path, None, None)
         for p in paths:
             with Image.open(p) as image:
@@ -196,7 +302,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def validate(self):
         values = read_values(self)
-        enabled = [key for key in (*DISPLAY_KEYS, 'ccd') if values[key + 'EnabledCheckBox']]
+        selected_dmd(values)
+        enabled = [key for key in (*DISPLAY_KEYS, 'ccd') if self.device_enabled(key, values)]
         if not enabled:
             raise ValueError('请至少启用一个设备。')
         if values['synchronizeDmdCcdCheckBox']:
@@ -210,6 +317,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if values['synchronizeSlmsCheckBox'] and 'slm1' in enabled and 'slm2' in enabled:
             self.validate_pairs()
         input_path(values['outputDirectoryEdit'])
+        if 'dmd' in enabled:
+            options = DmdImageOptions.from_settings(values)
+            if values['f4321EnabledCheckBox']:
+                if options.pixel_mode == 'original':
+                    raise ValueError('F4321 输入请选择“8 位灰度”或“1 位二值”。')
+                for name in ('f4321LocalIpEdit', 'f4321TargetIpEdit'):
+                    ipaddress.IPv4Address(values[name].strip())
+                if not self.demo and not input_path(values['f4321DllPathEdit']).is_file():
+                    raise FileNotFoundError('F4321 DLL 不存在，请选择 F4321_HS.dll。')
         if not self.demo:
             for key, field, suffix in [('slm1', 'slm1SdkPathEdit', 'SecondDll.dll'),
                                        ('slm2', 'slm2SdkPathEdit', 'HDSLMFunc.dll'),
@@ -236,6 +352,8 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(self, '演示设备', 'DMD、SLM1、SLM2：虚拟显示区域\nCCD：合成图像源\n未访问真实 SDK。')
             return
         lines = []
+        if self.f4321EnabledCheckBox.isChecked():
+            lines.append(f'F4321：按配置网络地址查询 {self.f4321TargetIpEdit.text()}:{self.f4321TargetPortSpinBox.value()}；点击“连接设备”读取型号、面板尺寸并上传图像。')
         try:
             for monitor in zkwx.enumerate_monitors():
                 lines.append(f'Windows monitor {monitor.index}: {monitor.width}×{monitor.height} @ ({monitor.left}, {monitor.top})')
@@ -265,24 +383,30 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.information(self, '设备枚举', '\n'.join(lines))
 
     def toggle_connection(self):
-        if self.connected or self.camera is not None:
+        if self.device_task is not None:
+            self.device_task.requestInterruption()
+            self.statusBar().showMessage('正在取消设备连接或上传，等待 SDK 释放资源。')
+        elif self.connected or self.camera is not None or self.devices:
             self.disconnect_devices()
         else:
             self.connect_devices()
 
     def connect_devices(self):
+        if self.device_task is not None:
+            raise ValueError('设备操作尚未完成。')
         self.stop_all()
         settings = self.validate()
         devices = {}
         try:
             for key in DISPLAY_KEYS:
-                if settings[key + 'EnabledCheckBox']:
+                if self.device_enabled(key, settings):
                     devices[key] = self.display_factory(key, settings, self.paths[key], self.demo)
-            geometries = [device.geometry for device in devices.values()]
+            geometries = [device.geometry for device in devices.values() if device.geometry is not None]
             if len(set(geometries)) != len(geometries):
                 raise ValueError('DMD、SLM1、SLM2 不能使用同一个显示区域，请修改设备编号。')
-            for device in devices.values():
-                device.open()
+            for key, device in devices.items():
+                if key != 'dmd' or not settings['f4321EnabledCheckBox']:
+                    device.open()
         except Exception:
             for device in devices.values():
                 try:
@@ -290,6 +414,35 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
             raise
+        if settings['f4321EnabledCheckBox']:
+            self.pending_devices = devices
+            self.dmdStateLabel.setText('● 连接 / 上传中')
+            self.dmdDeviceInfoLabel.setText('正在查询面板并准备 BMP…')
+            self.statusBar().showMessage('正在连接 F4321 并上传转换后的图像；可取消。')
+            self.start_device_task(lambda cancel: devices['dmd'].open(cancel),
+                lambda _: self.complete_connection(settings, devices), self.connection_failed)
+            return
+        self.complete_connection(settings, devices)
+
+    def connection_failed(self, message):
+        retained = {}
+        for key, device in {**self.pending_devices, **self.devices}.items():
+            try:
+                device.close()
+            except Exception as exc:
+                retained[key] = device
+                message += f'；{key} 关闭失败：{exc}，请重试断开。'
+        self.pending_devices = {}
+        self.devices = retained
+        self.connected = bool(retained)
+        self.dmdStateLabel.setText('● 连接未完成')
+        self.dmdDeviceInfoLabel.setText('未就绪，请检查网络、SDK 和图像参数')
+        self.statusBar().showMessage(message)
+        if not self.closing:
+            QtWidgets.QMessageBox.warning(self, 'F4321 连接 / 上传失败', message)
+
+    def complete_connection(self, settings, devices):
+        self.pending_devices = {}
         self.settings, self.devices = settings, devices
         self.connected = True
         self.saved_frames = self.received_frames = 0
@@ -298,6 +451,11 @@ class MainWindow(QtWidgets.QMainWindow):
             if device.output is not None:
                 device.output.closed.connect(self.disconnect_devices)
             getattr(self, key + 'StateLabel').setText('● 演示设备' if self.demo else '● 已连接')
+            self.render_frame(key, self.indices[key])
+        network = self.network_dmd()
+        if network is not None:
+            self.dmdDeviceInfoLabel.setText(f'缓存就绪 · {len(self.paths["dmd"])} 张')
+            self.dmdDeviceInfoLabel.setToolTip(network.info_text)
         try:
             if settings['ccdEnabledCheckBox']:
                 self.camera = self.camera_factory(settings, self.demo, parent=self)
@@ -344,6 +502,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdStateLabel.setText('● ' + message[:50])
 
     def disconnect_devices(self, *_):
+        if self.device_task is not None:
+            self.device_task.requestInterruption()
+            return
         if self.disconnecting:
             return
         self.disconnecting = True
@@ -354,8 +515,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 device.close()
             except Exception as exc:
                 self.statusBar().showMessage(f'{key} 关闭失败：{exc}')
-            getattr(self, key + 'StateLabel').setText('● 未连接')
-        self.connected = self.camera_ready = False
+                self.devices[key] = device
+            getattr(self, key + 'StateLabel').setText('● 关闭失败，请重试' if key in self.devices else '● 未连接')
+        self.connected, self.camera_ready = bool(self.devices), False
         if self.camera is not None:
             self.camera.requestInterruption()
         else:
@@ -380,11 +542,24 @@ class MainWindow(QtWidgets.QMainWindow):
         return (key,)
 
     def render_frame(self, key, index):
+        self.publish_frame(key, self.prepare_frame(key, index))
+
+    def prepare_frame(self, key, index, values=None):
+        """Prepare and validate without changing the preview or hardware."""
+        values = read_values(self) if values is None else values
         path = self.paths[key][index]
-        source = pil_qimage(path)
+        transform = ImageTransform.from_settings(values, key)
+        background = values['slm2BackgroundSpinBox'] if key == 'slm2' else 0
+        opened = prepare_image(path, DmdImageOptions.from_settings(values)) if key == 'dmd' else Image.open(path)
+        with opened as original:
+            with transform.apply_pil(original, fill=background) as transformed:
+                source = pil_image_qimage(transformed)
         display = self.devices[key].display if key in self.devices else zkwx.Monitor(0, 0, 0, 1920, 1080, False)
-        offset_x = getattr(self, key + 'OffsetXSpinBox').value() if key != 'dmd' else 0
-        offset_y = getattr(self, key + 'OffsetYSpinBox').value() if key != 'dmd' else 0
+        unknown_panel = key == 'dmd' and values.get('f4321EnabledCheckBox') and key not in self.devices
+        if unknown_panel:
+            display = zkwx.Monitor(0, 0, 0, max(1920, source.width()), max(1080, source.height()), False)
+        offset_x = values[key + 'OffsetXSpinBox'] if key != 'dmd' else 0
+        offset_y = values[key + 'OffsetYSpinBox'] if key != 'dmd' else 0
         source_size = (source.width(), source.height())
         if key == 'slm1':
             origin = image_files.canvas_origin(source_size, display, offset_x, offset_y)
@@ -395,17 +570,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 raise ValueError('DMD 输入超过面板尺寸，不能原尺寸显示。')
             origin = ((display.width - source.width()) // 2, (display.height - source.height()) // 2)
         canvas = QtGui.QImage(display.width, display.height, QtGui.QImage.Format_ARGB32)
-        background = self.slm2BackgroundSpinBox.value() if key == 'slm2' else 0
         canvas.fill(QtGui.QColor(background, background, background))
         painter = QtGui.QPainter(canvas)
         painter.drawImage(origin[0], origin[1], source)
         painter.end()
+        return source, canvas, origin, display, path, transform
+
+    def publish_frame(self, key, prepared):
+        source, canvas, origin, display, path, transform = prepared
+        self.transforms[key] = transform
         self.source_images[key] = source
         self.images[key] = canvas
         self.refresh_preview(key)
         getattr(self, key + 'FrameInfoLabel').setText('文件：' + path.name)
         getattr(self, key + 'FrameInfoLabel').setToolTip(str(path))
-        getattr(self, key + 'PanelInfoLabel').setText(f'面板 {display.width} × {display.height}')
+        unknown_panel = key == 'dmd' and self.f4321EnabledCheckBox.isChecked() and key not in self.devices
+        getattr(self, key + 'PanelInfoLabel').setText('面板尺寸：连接后读取' if unknown_panel else f'面板 {display.width} × {display.height}')
         getattr(self, key + 'ActiveAreaLabel').setText(f'有效区 {source.width()} × {source.height()}')
         getattr(self, key + 'ActiveAreaLabel').setToolTip(f'有效区左上角：({origin[0]}, {origin[1]}) 面板像素')
 
@@ -414,16 +594,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self.require_capture_sync_ready()
         values = read_values(self)
         group = self.group_for(key)
+        prepared = {}
         for target in group:
             if not self.paths[target]:
                 raise ValueError(f'{target.upper()} 未载入图像。')
+            prepared[target] = self.prepare_frame(target, index, values)
+        for target in group:
             path = self.paths[target][index]
             if target in self.devices:
                 self.devices[target].show(path, values)
             self.indices[target] = index
             with QtCore.QSignalBlocker(getattr(self, target + 'FrameSpinBox')):
                 getattr(self, target + 'FrameSpinBox').setValue(index + 1)
-            self.render_frame(target, index)
+            self.publish_frame(target, prepared[target])
         if key == 'dmd' and capture and self.synchronizeDmdCcdCheckBox.isChecked():
             self.queue_capture(self.paths[key][index].stem + '.png', automatic=True)
 
@@ -431,12 +614,18 @@ class MainWindow(QtWidgets.QMainWindow):
         return getattr(self, key + 'IntervalSpinBox').value()
 
     def play(self, key):
+        if self.device_task is not None:
+            raise ValueError('设备正在连接或上传。')
         group = self.group_for(key)
         master = group[0]
         if self.connected and any(target not in self.devices for target in group):
             raise ValueError('目标显示设备未连接。')
         if not self.paths[master]:
             raise ValueError('请先载入图像。')
+        if master == 'dmd' and self.network_dmd() is not None:
+            period_us = self.f4321ExposureSpinBox.value() + self.f4321DarkTimeSpinBox.value()
+            if self.interval('dmd') * 1000000 < period_us:
+                raise ValueError('F4321 切图间隔不能小于一张图像的曝光与暗场时间之和。')
         if master == 'dmd' and self.synchronizeDmdCcdCheckBox.isChecked():
             self.require_capture_sync_ready()
         self.pause(master)
@@ -467,6 +656,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.timers[target].stop()
         if key == 'dmd' and self.camera is not None:
             self.camera.submit('cancel_captures')
+        # Hold the selected F4321 image by letting its bit planes keep cycling.
+        # A board Stop would freeze/end the PWM needed for eight-bit grayscale.
+        # stop_all/disconnect explicitly stop board playback instead.
         if hasattr(self, 'poll_timer'):
             self.update_actions()
 
@@ -478,8 +670,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def select_frame(self, key, value):
         if not self.paths[key]:
             return
-        self.pause(key)
-        self.guard(partial(self.show_frame, key, value - 1))
+        def select():
+            self.pause(key)
+            self.show_frame(key, value - 1)
+        self.guard(select)
 
     def start_all(self):
         if not self.connected:
@@ -499,6 +693,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def stop_all(self, *_):
         for timer in self.timers.values():
             timer.stop()
+        if self.device_task is not None:
+            self.device_task.requestInterruption()
+        network = self.network_dmd()
+        if network is not None and self.device_task is None:
+            try:
+                network.stop()
+            except Exception as exc:
+                self.statusBar().showMessage(f'F4321 停止失败：{exc}')
         if self.camera is not None:
             self.camera.submit('cancel_captures')
             self.camera.submit('record_stop')
@@ -512,11 +714,121 @@ class MainWindow(QtWidgets.QMainWindow):
             self.show_frame(key, self.indices[key])
             self.statusBar().showMessage(f'{key.upper()} 偏移已应用；切换“完整面板”可查看图案位置。')
 
+    def reupload_dmd(self):
+        network = self.network_dmd()
+        if network is None:
+            raise ValueError('请先连接 F4321 DMD。')
+        if self.device_task is not None:
+            raise ValueError('正在上传，请等待完成。')
+        self.stop_all()
+        values = read_values(self)
+        previous = self.transforms['dmd']
+        index = self.indices['dmd']
+        self.dmdStateLabel.setText('● 上传中')
+        self.dmdDeviceInfoLabel.setText('正在转换并重新上传…')
+
+        def complete(_):
+            try:
+                network.show(self.paths['dmd'][index], values)
+                self.render_frame('dmd', index)
+                for suffix in TRANSFORM_SUFFIXES:
+                    self.settings['dmd' + suffix] = values['dmd' + suffix]
+                self.dmdStateLabel.setText('● 演示设备' if self.demo else '● 已连接')
+                self.dmdDeviceInfoLabel.setText(f'缓存就绪 · {len(self.paths["dmd"])} 张')
+                self.statusBar().showMessage('F4321 上传完成，当前帧已显示。')
+            except Exception as exc:
+                failed(str(exc))
+
+        def failed(message):
+            for suffix, value in zip(TRANSFORM_SUFFIXES, (previous.angle, previous.horizontal, previous.vertical)):
+                control = getattr(self, 'dmd' + suffix)
+                with QtCore.QSignalBlocker(control):
+                    control.setValue(value) if suffix == 'RotationSpinBox' else control.setChecked(value)
+            network.uploaded = False
+            self.dmdStateLabel.setText('● 未就绪')
+            self.dmdDeviceInfoLabel.setText('上传未完成 · 请断开后重连')
+            self.statusBar().showMessage(message)
+            if not self.closing:
+                QtWidgets.QMessageBox.warning(self, 'F4321 上传失败', message)
+            if self.closing:
+                self.disconnect_devices()
+
+        self.start_device_task(lambda cancel: network.reload(values, cancel), complete, failed)
+
+    def sync_transform_values(self):
+        values = read_values(self)
+        self.transforms = {key: ImageTransform.from_settings(values, key)
+                           for key in (*DISPLAY_KEYS, 'ccd')}
+
+    def transform_editable(self, key):
+        if self.disconnecting or self.device_task is not None:
+            return False
+        synchronized_capture = self.synchronizeDmdCcdCheckBox.isChecked() and self.timers['dmd'].isActive()
+        if synchronized_capture:
+            return False
+        if key == 'ccd':
+            return not (self.recording or self.recording_pending or
+                        (self.camera is not None and not self.camera_ready))
+        targets = ('slm1', 'slm2') if key in ('slm1', 'slm2') and self.synchronizeSlmsCheckBox.isChecked() else (key,)
+        return not any(self.timers[target].isActive() for target in targets)
+
+    def transform_changed(self, key, *_):
+        self.guard(partial(self.apply_transform, key))
+
+    def apply_transform(self, key):
+        previous = self.transforms[key]
+        values = read_values(self)
+        transform = ImageTransform.from_settings(values, key)
+        if transform == previous:
+            return
+        try:
+            if not self.transform_editable(key):
+                raise ValueError('请先暂停播放或停止录像，再调整图像方向。')
+            if key == 'ccd':
+                if self.camera is not None:
+                    self.camera.submit('transform', transform)
+            elif self.paths[key]:
+                # Check every frame before applying an orientation to a sequence.
+                display = self.devices[key].display if key in self.devices else zkwx.Monitor(0, 0, 0, 1920, 1080, False)
+                for path in self.paths[key]:
+                    with Image.open(path) as source:
+                        size = transform.output_size(source.size)
+                    if key == 'slm1':
+                        image_files.canvas_origin(size, display, values['slm1OffsetXSpinBox'], values['slm1OffsetYSpinBox'])
+                    elif key == 'slm2':
+                        magic_images.canvas_origin(size, display, values['slm2OffsetXSpinBox'], values['slm2OffsetYSpinBox'])
+                    elif not (self.f4321EnabledCheckBox.isChecked() and key not in self.devices) and (size[0] > display.width or size[1] > display.height):
+                        raise ValueError(f'{path.name} 旋转后为 {size[0]}×{size[1]}，超过面板 {display.width}×{display.height}。')
+                prepared = self.prepare_frame(key, self.indices[key], values)
+                if key == 'dmd' and self.network_dmd() is not None:
+                    self.reupload_dmd()
+                    return
+                if key in self.devices:
+                    self.devices[key].show(self.paths[key][self.indices[key]], values)
+                self.publish_frame(key, prepared)
+            self.transforms[key] = transform
+            if self.settings is not None:
+                for suffix in TRANSFORM_SUFFIXES:
+                    self.settings[key + suffix] = values[key + suffix]
+            self.statusBar().showMessage(f'{key.upper()} 图像方向已应用：{transform.angle:g}°，先翻转后旋转。')
+        except Exception:
+            for suffix, value in zip(TRANSFORM_SUFFIXES, (previous.angle, previous.horizontal, previous.vertical)):
+                control = getattr(self, key + suffix)
+                with QtCore.QSignalBlocker(control):
+                    if suffix == 'RotationSpinBox':
+                        control.setValue(value)
+                    else:
+                        control.setChecked(value)
+            raise
+
     def require_capture_sync_ready(self):
-        if not self.dmdEnabledCheckBox.isChecked() or not self.ccdEnabledCheckBox.isChecked():
+        if not self.device_enabled('dmd') or not self.ccdEnabledCheckBox.isChecked():
             raise ValueError('DMD 同步采集需要同时启用 DMD 和 CCD。')
         if not self.connected or 'dmd' not in self.devices or not self.camera_ready or not self.received_frames:
             raise ValueError('DMD 同步采集需要先连接 DMD 和 CCD，并等待相机第一帧。')
+        network = self.network_dmd()
+        if self.device_task is not None or (network is not None and not network.ready):
+            raise ValueError('请等待 F4321 图像上传并确认就绪。')
         if self.dmdSettleSpinBox.value() >= self.interval('dmd'):
             raise ValueError('稳定时间必须小于 DMD 播放间隔。')
 
@@ -543,7 +855,10 @@ class MainWindow(QtWidgets.QMainWindow):
         after = now + self.dmdSettleSpinBox.value() if automatic else now
         deadline = now + self.interval('dmd') if automatic else now + max(5, self.ccdTimeoutSpinBox.value() / 1000)
         metadata = {'experiment': settings['sessionNameEdit'], 'demo': self.demo, 'automatic': automatic,
-                    'display_files': {k: str(self.paths[k][self.indices[k]]) for k in self.devices}}
+                    'display_files': {k: str(self.paths[k][self.indices[k]]) for k in self.devices},
+                    'display_transforms': {k: self.transforms[k].as_dict() for k in self.devices},
+                    'dmd_conversion': DmdImageOptions.from_settings(settings).as_dict(),
+                    'dmd_backend': 'f4321' if settings.get('f4321EnabledCheckBox') else 'desktop'}
         request = CaptureRequest(input_path(settings['outputDirectoryEdit']) / filename, after,
                                  settings['overwriteCheckBox'], settings['saveManifestCheckBox'], metadata, deadline)
         self.camera.submit('capture', request)
@@ -587,7 +902,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.received_frames += 1
         self.images['ccd'] = camera_qimage(image)
         self.refresh_preview('ccd')
-        self.ccdPanelInfoLabel.setText(f'采集 {image.shape[1]} × {image.shape[0]}')
+        raw_shape = metadata.get('raw_shape', image.shape)
+        self.ccdPanelInfoLabel.setText(f'采集 {raw_shape[1]} × {raw_shape[0]}')
+        self.ccdPanelInfoLabel.setToolTip(f'变换后图像：{image.shape[1]} × {image.shape[0]}')
         self.ccdActiveAreaLabel.setText(f'预览 {fps:.1f} FPS')
         self.ccdFrameInfoLabel.setText(f'帧 {metadata["frame_id"]} · 曝光 {metadata["exposure"]:g} μs · 增益 {metadata["gain"]:g}')
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 正在取帧')
@@ -611,7 +928,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.resize_timer.start(50)
 
     def update_actions(self, *_):
-        busy = self.connected or self.camera is not None or self.disconnecting
+        transferring = self.device_task is not None
+        busy = self.connected or self.camera is not None or self.disconnecting or transferring or bool(self.devices)
         running = any(timer.isActive() for timer in self.timers.values())
         waiting = self.connected and self.settings and self.settings['ccdEnabledCheckBox'] and (not self.camera_ready or not self.received_frames)
         self.configurationScrollContents.setEnabled(not busy)
@@ -619,37 +937,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self.enumerateDevicesButton.setEnabled(not busy)
         self.validateConfigurationButton.setEnabled(not busy)
         self.connectDevicesButton.setEnabled(not self.disconnecting)
-        self.connectDevicesButton.setText('断开设备' if busy else '连接设备')
+        self.connectDevicesButton.setText('取消连接 / 上传' if transferring else '断开设备' if busy else '连接设备')
         self.connectionStateLabel.setText(('● 演示模式 · ' if self.demo else '● ') +
-            ('断开中' if self.disconnecting else '连接中' if waiting else '设备已连接' if self.connected else '设备未连接'))
+            ('断开中' if self.disconnecting else '连接 / 上传中' if transferring else '连接中' if waiting else '设备已连接' if self.connected else '设备未连接'))
         sync_capture = self.synchronizeDmdCcdCheckBox.isChecked()
-        self.startAllButton.setEnabled(self.connected and not (waiting and sync_capture) and not self.disconnecting)
-        self.stopAllButton.setEnabled(running or self.recording or self.recording_pending)
+        network = self.network_dmd()
+        network_ready = network is None or network.ready
+        self.startAllButton.setEnabled(self.connected and not (waiting and sync_capture) and not self.disconnecting and not transferring and network_ready)
+        self.stopAllButton.setEnabled(running or self.recording or self.recording_pending or transferring or (network is not None and network.ready))
         self.synchronizeSlmsCheckBox.setEnabled(not busy and not running)
         self.synchronizeDmdCcdCheckBox.setEnabled(
-            self.dmdEnabledCheckBox.isChecked() and self.ccdEnabledCheckBox.isChecked()
-            and not self.timers['dmd'].isActive() and not waiting and not self.disconnecting)
+            self.device_enabled('dmd') and self.ccdEnabledCheckBox.isChecked()
+            and not self.timers['dmd'].isActive() and not waiting and not self.disconnecting and not transferring)
         for key in DISPLAY_KEYS:
-            usable = bool(self.paths[key]) and getattr(self, key + 'EnabledCheckBox').isChecked() and not self.disconnecting
+            usable = bool(self.paths[key]) and self.device_enabled(key) and not self.disconnecting and not transferring
             if busy:
                 usable = usable and key in self.devices and not (key == 'dmd' and sync_capture and waiting)
+            if key == 'dmd':
+                usable = usable and network_ready
             for suffix in ('PlayButton', 'PreviousButton', 'NextButton', 'FrameSpinBox'):
                 getattr(self, key + suffix).setEnabled(usable)
-            getattr(self, key + 'PauseButton').setEnabled(running and usable)
+            getattr(self, key + 'PauseButton').setEnabled((running or (key == 'dmd' and network is not None and network_ready)) and usable)
         for key in ('slm1', 'slm2'):
-            getattr(self, key + 'ApplyOffsetButton').setEnabled(bool(self.paths[key]) and not self.disconnecting)
-        self.ccdApplyParametersButton.setEnabled(self.camera_ready and not self.disconnecting)
-        self.ccdCaptureButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.disconnecting)
-        self.ccdRecordButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.recording_pending and not self.disconnecting)
+            getattr(self, key + 'ApplyOffsetButton').setEnabled(bool(self.paths[key]) and not self.disconnecting and not transferring)
+        self.ccdApplyParametersButton.setEnabled(self.camera_ready and not self.disconnecting and not transferring)
+        self.ccdCaptureButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.disconnecting and not transferring)
+        self.ccdRecordButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.recording_pending and not self.disconnecting and not transferring)
         self.dmdIntervalSpinBox.setEnabled(not self.timers['dmd'].isActive())
+        can_upload = network is not None and (network.demo or (network.controller is not None and network.controller.connected))
+        self.dmdUploadButton.setEnabled(can_upload and not transferring and not self.disconnecting and not running)
+        for key in (*DISPLAY_KEYS, 'ccd'):
+            for suffix in TRANSFORM_SUFFIXES:
+                getattr(self, key + suffix).setEnabled(self.transform_editable(key))
 
     def closeEvent(self, event):
+        if self.device_task is not None:
+            self.closing = True
+            self.device_task.requestInterruption()
+            event.ignore()
+            return
         if self.camera is not None:
             self.closing = True
             self.disconnect_devices()
             event.ignore()
             return
         self.disconnect_devices()
+        if self.devices:
+            self.closing = False
+            event.ignore()
+            return
         self.poll_timer.stop()
         if self.demo_directory is not None:
             self.demo_directory.cleanup()

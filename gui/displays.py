@@ -8,7 +8,9 @@ from ..devices.zkwx_slm import sdk as zkwx
 from ..devices.zkwx_slm import controller as zkwx_images
 from ..devices.magicholo_slm import sdk as magic
 from ..devices.magicholo_slm import controller as magic_images
-from .configuration import input_path, pil_qimage
+from ..utils.image_transforms import ImageTransform
+from ..utils.dmd_images import DmdImageOptions, prepare_image
+from .configuration import input_path, pil_image_qimage
 
 
 class DmdOutput(QtWidgets.QWidget):
@@ -56,6 +58,8 @@ class DisplayAdapter:
         self.sdk = self.output = self.display = None
         self.geometry = None
         self.settings = settings
+        self.source_size = None
+        transform = ImageTransform.from_settings(settings, key)
         try:
             if demo:
                 size = (1920, 1080)
@@ -77,17 +81,20 @@ class DisplayAdapter:
                     None if settings['slm2DisplaySpinBox'] == -1 else settings['slm2DisplaySpinBox'])
             self.geometry = (self.display.left, self.display.top, self.display.width, self.display.height)
             if key == 'slm2':
-                size = magic_images.validate_images(paths, self.display)
+                size = magic_images.validate_images(paths, self.display, transform)
                 magic_images.canvas_origin(size, self.display, settings['slm2OffsetXSpinBox'], settings['slm2OffsetYSpinBox'])
             elif key == 'slm1':
-                size = zkwx_images.validate_images(paths, self.display)
+                size = zkwx_images.validate_images(paths, self.display, transform)
                 zkwx_images.canvas_origin(size, self.display,
                     settings.get('slm1OffsetXSpinBox', 0), settings.get('slm1OffsetYSpinBox', 0))
             else:
                 for path in paths:
                     with Image.open(path) as image:
-                        if image.width > self.display.width or image.height > self.display.height:
-                            raise ValueError(f'DMD 图像 {path.name} 超出显示器尺寸，禁止拉伸或裁切。')
+                        image.verify()
+                        self._dmd_size(transform.output_size(image.size), path)
+            if key in ('slm1', 'slm2'):
+                with Image.open(paths[0]) as image:
+                    self.source_size = image.size
         except Exception:
             self.close()
             raise
@@ -103,28 +110,50 @@ class DisplayAdapter:
             self.sdk.open(self.display.index)
 
     def show(self, path, settings):
+        transform = ImageTransform.from_settings(settings, self.key)
         if self.key == 'slm2':
             with Image.open(path) as image:
-                origin = magic_images.canvas_origin(image.size, self.display,
+                self._slm_source_size(image.size, path)
+                origin = magic_images.canvas_origin(transform.output_size(image.size), self.display,
                     settings['slm2OffsetXSpinBox'], settings['slm2OffsetYSpinBox'])
-            data = magic_images.prepare_canvas(path, self.display, origin, settings['slm2BackgroundSpinBox'])
+            data = magic_images.prepare_canvas(path, self.display, origin,
+                                               settings['slm2BackgroundSpinBox'], transform)
             if not self.demo:
                 self.sdk.show_8bit(self.display.index, self.display.width, self.display.height, data)
         elif self.key == 'slm1':
             offset_x = settings.get('slm1OffsetXSpinBox', 0)
             offset_y = settings.get('slm1OffsetYSpinBox', 0)
             with Image.open(path) as image:
-                zkwx_images.canvas_origin(image.size, self.display, offset_x, offset_y)
+                image.verify()
+                if image.mode not in {'1', 'L', 'I', 'I;16'}:
+                    raise ValueError(f'SLM1 phase image must be single-channel grayscale: {path}')
+                self._slm_source_size(image.size, path)
+                zkwx_images.canvas_origin(transform.output_size(image.size), self.display, offset_x, offset_y)
             if not self.demo:
                 self.sdk.dll.Timeout_ShowWindow(True)
-                self.sdk.show(path, self.display, 16, offset_x, offset_y)
-        elif not self.demo:
-            image = pil_qimage(path)
-            if image.width() > self.output.width() or image.height() > self.output.height():
-                raise ValueError('DMD 输入超过输出尺寸。')
-            self.output.image = image
-            self.output.set_cursor(settings['dmdShowCursorCheckBox'])
-            self.output.repaint()
+                if transform.is_identity:
+                    self.sdk.show(path, self.display, 16, offset_x, offset_y)
+                else:
+                    self.sdk.show(path, self.display, 16, offset_x, offset_y, transform=transform)
+        else:
+            with prepare_image(path, DmdImageOptions.from_settings(settings)) as source:
+                self._dmd_size(transform.output_size(source.size), path)
+                with transform.apply_pil(source) as oriented:
+                    if not self.demo:
+                        image = pil_image_qimage(oriented)
+                        if image.width() > self.output.width() or image.height() > self.output.height():
+                            raise ValueError('DMD 旋转后的输入超过输出尺寸，禁止裁切。')
+                        self.output.image = image
+                        self.output.set_cursor(settings['dmdShowCursorCheckBox'])
+                        self.output.repaint()
+
+    def _dmd_size(self, size, path):
+        if size[0] > self.display.width or size[1] > self.display.height:
+            raise ValueError(f'DMD 图像 {path.name} 旋转后超出显示器尺寸，禁止拉伸或裁切。')
+
+    def _slm_source_size(self, size, path):
+        if self.source_size is not None and size != self.source_size:
+            raise ValueError(f'SLM 相位图 {path.name} 尺寸已变化；同一序列必须保持原始尺寸一致。')
 
     def blank(self):
         if not self.demo and self.key == 'slm1' and self.sdk is not None:

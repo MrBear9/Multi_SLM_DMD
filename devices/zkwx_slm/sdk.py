@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 from uuid import uuid4
 from ...utils.paths import PROJECT_ROOT
+from ...utils.image_transforms import ImageTransform
 
 DEFAULT_INPUT = PROJECT_ROOT / "tools" / "slm1"
 
@@ -146,20 +147,27 @@ class ZhongkeTimeoutSDK:
         interval_ms: int,
         offset_x: int = 0,
         offset_y: int = 0,
+        transform: ImageTransform | None = None,
     ) -> None:
         """Display native pixels, optionally shifted from the panel centre.
 
         SDK DesX/DesY position the output window, not the image inside it. For
-        offsets we therefore keep that window on the complete monitor and pass
-        a lossless, full-panel image. Zero offset retains the original SDK path.
+        offsets/orientation we keep that window on the complete monitor and pass
+        a lossless, full-panel image. Identity at zero offset retains the original path.
         """
+        from PIL import Image
+        from .controller import canvas_origin, prepare_canvas
+
+        transform = transform or ImageTransform()
+        with Image.open(path) as image:
+            image.verify()
+            if image.mode not in {"1", "L", "I", "I;16"}:
+                raise ValueError(f'SLM1 phase image must be single-channel grayscale: {path}')
+            canvas_origin(transform.output_size(image.size), monitor, offset_x, offset_y)
         output_path = path
         next_canvas = None
-        if offset_x or offset_y:
-            # Imported here because controller also exposes the SDK types.
-            from .controller import prepare_canvas
-
-            with prepare_canvas(path, monitor, offset_x, offset_y) as canvas:
+        if offset_x or offset_y or not transform.is_identity:
+            with prepare_canvas(path, monitor, offset_x, offset_y, transform) as canvas:
                 if getattr(self, "_canvas_directory", None) is None:
                     self._canvas_directory = tempfile.TemporaryDirectory(prefix="slm1_canvas_")
                 self._cleanup_canvases(getattr(self, "_active_canvas", None))

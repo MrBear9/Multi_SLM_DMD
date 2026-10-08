@@ -15,6 +15,7 @@ from .sdk import (
     HDSLM8BitSDK,
 )
 from ...utils.images import natural_image_key
+from ...utils.image_transforms import ImageTransform
 
 
 def collect_images(input_path: Path, start_id: str | None, limit: int | None) -> list[Path]:
@@ -47,7 +48,9 @@ def collect_images(input_path: Path, start_id: str | None, limit: int | None) ->
         raise FileNotFoundError(f"Input image or directory not found: {input_path}")
     return paths if limit is None else paths[:limit]
 
-def validate_images(paths: list[Path], display: SDKDisplay) -> tuple[int, int]:
+def validate_images(paths: list[Path], display: SDKDisplay,
+                    transform: ImageTransform | None = None) -> tuple[int, int]:
+    transform = transform or ImageTransform()
     expected_size: tuple[int, int] | None = None
     for path in paths:
         with Image.open(path) as image:
@@ -59,9 +62,10 @@ def validate_images(paths: list[Path], display: SDKDisplay) -> tuple[int, int]:
                 f"{path.name} uses Pillow mode {mode!r}; HDSLM45R input must be "
                 "an 8-bit single-channel grayscale image (mode 'L')."
             )
-        if size[0] > display.width or size[1] > display.height:
+        output_size = transform.output_size(size)
+        if output_size[0] > display.width or output_size[1] > display.height:
             raise ValueError(
-                f"{path.name} is {size[0]}x{size[1]}, larger than display "
+                f"{path.name} after rotation is {output_size[0]}x{output_size[1]}, larger than display "
                 f"{display.width}x{display.height}; resizing/cropping is disabled."
             )
         if expected_size is None:
@@ -73,7 +77,7 @@ def validate_images(paths: list[Path], display: SDKDisplay) -> tuple[int, int]:
             )
     if expected_size is None:
         raise RuntimeError("No image was selected.")
-    return expected_size
+    return transform.output_size(expected_size)
 
 def canvas_origin(
     image_size: tuple[int, int],
@@ -94,14 +98,20 @@ def prepare_canvas(
     display: SDKDisplay,
     origin: tuple[int, int],
     background: int,
+    transform: ImageTransform | None = None,
 ) -> bytes:
     with Image.open(path) as image:
         image.load()
         if image.mode != "L":
             raise ValueError(f"Image changed or is not 8-bit grayscale: {path}")
-        canvas = Image.new("L", (display.width, display.height), color=background)
-        canvas.paste(image, origin)
-        return canvas.tobytes()
+        transform = transform or ImageTransform()
+        width, height = transform.output_size(image.size)
+        if min(origin) < 0 or origin[0] + width > display.width or origin[1] + height > display.height:
+            raise ValueError('The transformed SLM2 image exceeds the display; cropping is disabled.')
+        with transform.apply_pil(image, fill=background) as oriented:
+            with Image.new("L", (display.width, display.height), color=background) as canvas:
+                canvas.paste(oriented, origin)
+                return canvas.tobytes()
 
 
 def print_displays(displays: list[SDKDisplay], selected: int | None = None) -> None:
