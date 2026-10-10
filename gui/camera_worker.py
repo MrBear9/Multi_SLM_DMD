@@ -23,6 +23,7 @@ class RealCamera:
     def __init__(self, settings):
         self.settings = settings
         self.api = self.session = None
+        self.identity = {}
 
     def open(self):
         s = self.settings
@@ -30,6 +31,7 @@ class RealCamera:
         devices = self.api.list_devices()
         if s['ccdCameraSpinBox'] >= len(devices):
             raise ValueError('所选 CCD 编号不存在，请先枚举设备。')
+        self.identity = camera.camera_identity(devices[s['ccdCameraSpinBox']])
         self.session = dvp.CameraSession(self.api, s['ccdCameraSpinBox'])
         self.session.open()
         handle = self.session.handle.value
@@ -47,7 +49,8 @@ class RealCamera:
         handle = self.session.handle.value
         return {'exposure': camera.get_exposure(self.api, handle),
                 'gain': camera.get_gain(self.api, handle),
-                'auto': camera.get_ae_operation(self.api, handle) == dvp.AE_OP_CONTINUOUS}
+                'auto': camera.get_ae_operation(self.api, handle) == dvp.AE_OP_CONTINUOUS,
+                'camera': dict(self.identity)}
 
     def apply(self, exposure, gain, auto):
         handle = self.session.handle.value
@@ -61,7 +64,8 @@ class RealCamera:
         # Short SDK waits make stop/close responsive even with no incoming frames.
         frame, raw = self.session.get_frame(min(200, self.settings['ccdTimeoutSpinBox']))
         return camera.frame_to_image(frame, raw), {'frame_id': int(frame.uFrameID),
-            'exposure': float(frame.fExposure), 'gain': float(frame.fAGain)}
+            'exposure': float(frame.fExposure), 'gain': float(frame.fAGain),
+            'camera': dict(self.identity)}
 
     def close(self):
         try:

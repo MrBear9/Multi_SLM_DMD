@@ -45,7 +45,8 @@ def apply_values(window, values):
     for name, default in {'f4321EnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
                           'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
                           'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
-                          'dmdWhiteLevelSpinBox': 65535.0}.items():
+                          'dmdWhiteLevelSpinBox': 65535.0,
+                          'ccdPreviewIntervalSpinBox': 33}.items():
         if name in controls:
             values.setdefault(name, default)
     if values.get('dmdEnabledCheckBox', False) and values.get('f4321EnabledCheckBox', False):

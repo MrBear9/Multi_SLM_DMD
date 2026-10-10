@@ -17,6 +17,7 @@ from ..devices.zkwx_slm import sdk as zkwx
 from ..devices.magicholo_slm import sdk as magic
 from ..devices.magicholo_slm import controller as magic_images
 from ..devices.dvp2_camera import sdk as dvp
+from ..devices.dvp2_camera.controller import camera_identity
 from ..utils.paths import TOOLS_ROOT
 from ..utils.image_transforms import ImageTransform
 from ..utils.dmd_images import DmdImageOptions, prepare_image
@@ -36,6 +37,8 @@ class MainWindow(QtWidgets.QMainWindow):
                  camera_factory=CameraWorker):
         super().__init__()
         uic.loadUi(str(TOOLS_ROOT / 'ui' / 'MainWindow.ui'), self)
+        self.ccd_default_title = self.ccdTitleLabel.text()
+        self.ccd_default_tooltip = self.ccdTitleLabel.toolTip()
         self.demo = demo
         self.display_factory, self.camera_factory = display_factory, camera_factory
         self.devices = {}
@@ -50,7 +53,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_ready = self.connected = self.disconnecting = self.closing = False
         self.recording = self.recording_pending = False
         self.received_frames = self.saved_frames = 0
-        self.last_frame_time = None
+        self.preview_fps_started_at = None
+        self.preview_fps_frames = 0
         self.settings = None
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
         self.demo_directory = None
@@ -103,7 +107,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.outputDirectoryEdit.textChanged.connect(lambda text: self.capturePathLabel.setText('保存目录：' + text))
         self.poll_timer = QtCore.QTimer(self)
         self.poll_timer.timeout.connect(self.poll_camera)
-        self.poll_timer.start(33)
+        self.ccdPreviewIntervalSpinBox.valueChanged.connect(self.poll_timer.setInterval)
+        self.poll_timer.start(self.ccdPreviewIntervalSpinBox.value())
+        self.preview_fps_timer = QtCore.QTimer(self)
+        self.preview_fps_timer.setInterval(1000)
+        self.preview_fps_timer.timeout.connect(self.update_preview_fps)
+        self.ccdActiveAreaLabel.setToolTip('最近一个统计周期的平均预览帧率，约每秒更新一次。')
         self.resize_timer = QtCore.QTimer(self)
         self.resize_timer.setSingleShot(True)
         self.resize_timer.timeout.connect(self.refresh_all_previews)
@@ -372,7 +381,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 lines.append(f'{description}：{len(devices)} 个设备')
                 for index, device in enumerate(devices):
                     if description == 'CCD':
-                        lines.append(f'  {index}: {dvp.decode_sdk_string(device.FriendlyName)} / {dvp.decode_sdk_string(device.SerialNumber)}')
+                        identity = camera_identity(device)
+                        lines.append(f'  {index}: {identity["friendly_name"] or "未命名"} / 型号：{identity["model"] or "未知"} / 序列号：{identity["serial"] or "未知"}')
                     else:
                         lines.append(f'  SDK ID {device.index}: {device.name} / {device.width}×{device.height} @ ({device.left}, {device.top})')
             except Exception as exc:
@@ -446,7 +456,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings, self.devices = settings, devices
         self.connected = True
         self.saved_frames = self.received_frames = 0
-        self.last_frame_time = None
+        self.reset_preview_fps()
         for key, device in devices.items():
             if device.output is not None:
                 device.output.closed.connect(self.disconnect_devices)
@@ -481,6 +491,18 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.disconnecting:
             return
         self.camera_ready = True
+        self.reset_preview_fps()
+        self.preview_fps_started_at = time.monotonic()
+        self.preview_fps_timer.start()
+        identity = parameters.get('camera', {})
+        if not self.demo:
+            self.ccdTitleLabel.setText('相机 · ' + (identity.get('model') or '型号未返回'))
+            self.ccdTitleLabel.setToolTip(
+                f'实际型号：{identity.get("model") or "未知"}\n'
+                f'序列号：{identity.get("serial") or "未知"}\n'
+                f'设备名称：{identity.get("friendly_name") or "未命名"}')
+        else:
+            self.ccdTitleLabel.setToolTip('演示模式：使用合成图像，未连接 M3ST130-H-02C 实物。')
         self.on_camera_parameters(parameters)
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 已连接')
         self.update_actions()
@@ -531,6 +553,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_ready = self.recording = self.recording_pending = False
         self.disconnecting = False
         self.ccdStateLabel.setText('● 未连接')
+        self.reset_preview_fps()
+        self.ccdTitleLabel.setText(self.ccd_default_title)
+        self.ccdTitleLabel.setToolTip(self.ccd_default_tooltip)
         self.update_actions()
         if self.closing:
             self.close()
@@ -889,6 +914,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdFramesReceivedLabel.setText(f'已保存 {self.saved_frames} 帧')
         self.statusBar().showMessage('已保存：' + path)
 
+    def reset_preview_fps(self):
+        self.preview_fps_timer.stop()
+        self.preview_fps_started_at = None
+        self.preview_fps_frames = 0
+        self.ccdActiveAreaLabel.setText('预览 — FPS')
+
+    def update_preview_fps(self):
+        if self.preview_fps_started_at is None:
+            return
+        now = time.monotonic()
+        elapsed = now - self.preview_fps_started_at
+        if elapsed <= 0:
+            return
+        fps = self.preview_fps_frames / elapsed
+        self.ccdActiveAreaLabel.setText(f'预览 {fps:.1f} FPS')
+        self.preview_fps_started_at = now
+        self.preview_fps_frames = 0
+
     def poll_camera(self):
         if self.camera is None or self.disconnecting:
             return
@@ -896,16 +939,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if packet is None:
             return
         image, metadata = packet
-        now = metadata['received_at_monotonic']
-        fps = 0 if self.last_frame_time is None else 1 / max(0.0001, now - self.last_frame_time)
-        self.last_frame_time = now
         self.received_frames += 1
         self.images['ccd'] = camera_qimage(image)
         self.refresh_preview('ccd')
+        self.preview_fps_frames += 1
         raw_shape = metadata.get('raw_shape', image.shape)
         self.ccdPanelInfoLabel.setText(f'采集 {raw_shape[1]} × {raw_shape[0]}')
         self.ccdPanelInfoLabel.setToolTip(f'变换后图像：{image.shape[1]} × {image.shape[0]}')
-        self.ccdActiveAreaLabel.setText(f'预览 {fps:.1f} FPS')
         self.ccdFrameInfoLabel.setText(f'帧 {metadata["frame_id"]} · 曝光 {metadata["exposure"]:g} μs · 增益 {metadata["gain"]:g}')
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 正在取帧')
         self.update_actions()
@@ -987,6 +1027,7 @@ class MainWindow(QtWidgets.QMainWindow):
             event.ignore()
             return
         self.poll_timer.stop()
+        self.preview_fps_timer.stop()
         if self.demo_directory is not None:
             self.demo_directory.cleanup()
             self.demo_directory = None

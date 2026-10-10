@@ -42,6 +42,13 @@ from .sdk import (
 )
 
 
+def camera_identity(info: DvpCameraInfo) -> dict[str, str]:
+    """Report the enumerated camera, rather than assuming a configured model."""
+    return {name: decode_sdk_string(getattr(info, field)) for name, field in (
+        ('model', 'Model'), ('serial', 'SerialNumber'),
+        ('friendly_name', 'FriendlyName'), ('vendor', 'Vendor'))}
+
+
 def print_devices(devices: Sequence[DvpCameraInfo]) -> None:
     print("Available DVP2 cameras:")
     if not devices:

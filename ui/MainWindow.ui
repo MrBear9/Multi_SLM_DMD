@@ -736,7 +736,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
               <item row="1" column="1">
                <widget class="QGroupBox" name="ccdConfigurationGroupBox">
                 <property name="title">
-                 <string>CCD · DVP2 相机</string>
+                 <string>相机 · 度申 M3ST130-H-02C</string>
                 </property>
                 <layout class="QFormLayout" name="ccdConfigurationForm">
                  <property name="spacing">
@@ -761,7 +761,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                  <item row="0" column="1">
                   <widget class="QCheckBox" name="ccdEnabledCheckBox">
                    <property name="text">
-                    <string>启用 CCD</string>
+                    <string>启用相机</string>
                    </property>
                    <property name="checked">
                     <bool>true</bool>
@@ -837,6 +837,9 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                  </item>
                  <item row="3" column="1">
                   <widget class="QComboBox" name="ccdFormatComboBox">
+                   <property name="toolTip">
+                    <string>bgr8：彩色，每通道 8 位（BGR24）；mono8：8 位灰度。native：沿用相机当前输出格式，不会自动切换到最高位深。</string>
+                   </property>
                    <item>
                     <property name="text">
                      <string>bgr8</string>
@@ -881,6 +884,38 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                   </widget>
                  </item>
                  <item row="5" column="0">
+                  <widget class="QLabel" name="ccdPreviewIntervalSpinBoxLabel">
+                   <property name="text">
+                    <string>预览刷新间隔</string>
+                   </property>
+                   <property name="buddy">
+                    <cstring>ccdPreviewIntervalSpinBox</cstring>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QSpinBox" name="ccdPreviewIntervalSpinBox">
+                   <property name="toolTip">
+                    <string>界面读取最新相机图像的间隔。33 ms 约为 30 次/秒，10 ms 约为 100 次/秒；实际预览 FPS 受供帧和绘图速度影响。此项不设置相机采集帧率或录像帧率。</string>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>1000</number>
+                   </property>
+                   <property name="value">
+                    <number>33</number>
+                   </property>
+                   <property name="suffix">
+                    <string> ms</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0">
                   <widget class="QLabel" name="ccdRoiCheckBoxLabel">
                    <property name="text">
                     <string>传感器区域</string>
@@ -890,8 +925,11 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="6" column="1">
                   <widget class="QCheckBox" name="ccdRoiCheckBox">
+                   <property name="toolTip">
+                    <string>未启用时不裁切传感器区域；640 × 640 仅为 ROI 初值。实际采集尺寸以相机返回帧为准。</string>
+                   </property>
                    <property name="text">
                     <string>启用 ROI</string>
                    </property>
@@ -900,7 +938,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0" colspan="2">
+                 <item row="7" column="0" colspan="2">
                   <widget class="QWidget" name="ccdRoiWidget">
                    <property name="enabled">
                     <bool>false</bool>
@@ -990,6 +1028,20 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                      </widget>
                     </item>
                    </layout>
+                  </widget>
+                 </item>
+                 <item row="8" column="0" colspan="2">
+                  <widget class="QLabel" name="ccdModelInfoLabel">
+                   <property name="text">
+                    <string>彩色 CMOS · 全局快门 · USB3.0
+标称 1280 × 1024 · 像元 4.0 μm · 实际尺寸随采集帧读取</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                   </property>
                   </widget>
                  </item>
                 </layout>
@@ -3641,7 +3693,10 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                  <item>
                   <widget class="QLabel" name="ccdTitleLabel">
                    <property name="text">
-                    <string>CCD · 图像采集</string>
+                    <string>相机 · M3ST130-H-02C</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>度申 M3ST130-H-02C：彩色 CMOS，全局快门，USB3.0，标称 1280 × 1024，像元 4.0 μm。连接后显示 SDK 返回的实际型号。</string>
                    </property>
                   </widget>
                  </item>
