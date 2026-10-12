@@ -27,6 +27,7 @@ from .configuration import (read_values, apply_values, read_configuration,
 from .dmd_backends import DMD_BACKENDS, selected_dmd, create_display
 from .device_task import DeviceTask
 from .camera_worker import CameraWorker, CaptureRequest
+from .calibration_controller import CalibrationController
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
 TRANSFORM_SUFFIXES = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
@@ -56,6 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preview_fps_started_at = None
         self.preview_fps_frames = 0
         self.settings = None
+        self.calibration = CalibrationController(self)
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
         self.demo_directory = None
         self.timers = {}
@@ -98,6 +100,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.connectDevicesButton.clicked.connect(partial(self.guard, self.toggle_connection))
         self.startAllButton.clicked.connect(partial(self.guard, self.start_all))
         self.stopAllButton.clicked.connect(self.stop_all)
+        self.autoCalibrateButton.clicked.connect(self.calibration.open)
+        self.calibrationSetupButton.clicked.connect(self.calibration.open)
         for key in ('slm1', 'slm2'):
             getattr(self, key + 'ApplyOffsetButton').clicked.connect(partial(self.guard, partial(self.apply_offset, key)))
         self.synchronizeDmdCcdCheckBox.toggled.connect(self.capture_sync_changed)
@@ -506,6 +510,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.on_camera_parameters(parameters)
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 已连接')
         self.update_actions()
+        self.calibration.camera_ready()
 
     def on_camera_parameters(self, parameters):
         self.ccdExposureSpinBox.setValue(parameters['exposure'])
@@ -524,6 +529,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdStateLabel.setText('● ' + message[:50])
 
     def disconnect_devices(self, *_):
+        if self.calibration.active:
+            self.calibration.disconnect_after = True
+            self.calibration.cancel()
+            if self.calibration.task is not None:
+                return
         if self.device_task is not None:
             self.device_task.requestInterruption()
             return
@@ -716,6 +726,7 @@ class MainWindow(QtWidgets.QMainWindow):
             started.update(self.group_for(key))
 
     def stop_all(self, *_):
+        self.calibration.cancel()
         for timer in self.timers.values():
             timer.stop()
         if self.device_task is not None:
@@ -786,7 +797,7 @@ class MainWindow(QtWidgets.QMainWindow):
                            for key in (*DISPLAY_KEYS, 'ccd')}
 
     def transform_editable(self, key):
-        if self.disconnecting or self.device_task is not None:
+        if self.calibration.active or self.disconnecting or self.device_task is not None:
             return False
         synchronized_capture = self.synchronizeDmdCcdCheckBox.isChecked() and self.timers['dmd'].isActive()
         if synchronized_capture:
@@ -1009,8 +1020,27 @@ class MainWindow(QtWidgets.QMainWindow):
         for key in (*DISPLAY_KEYS, 'ccd'):
             for suffix in TRANSFORM_SUFFIXES:
                 getattr(self, key + suffix).setEnabled(self.transform_editable(key))
+        calibrating = self.calibration.active
+        self.saveConfigurationButton.setEnabled(not calibrating)
+        self.autoCalibrateButton.setText('标定进度…' if calibrating else '自动标定 / 光路对准')
+        self.previewScrollContents.setEnabled(not calibrating)
+        if calibrating:
+            self.connectDevicesButton.setEnabled(self.connected or self.camera is not None)
+            self.configurationScrollContents.setEnabled(False)
+            for control in (self.startAllButton, self.synchronizeSlmsCheckBox,
+                            self.synchronizeDmdCcdCheckBox, self.loadConfigurationButton,
+                            self.enumerateDevicesButton, self.validateConfigurationButton):
+                control.setEnabled(False)
+            self.stopAllButton.setEnabled(True)
 
     def closeEvent(self, event):
+        if self.calibration.active:
+            self.closing = True
+            self.calibration.disconnect_after = True
+            self.calibration.cancel()
+            if self.calibration.task is not None:
+                event.ignore()
+                return
         if self.device_task is not None:
             self.closing = True
             self.device_task.requestInterruption()

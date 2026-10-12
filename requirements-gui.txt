@@ -20,6 +20,9 @@ opencv-python>=4.6
 # pip 会自动安装 pyinstaller-hooks-contrib 等传递依赖。
 PyInstaller>=6,<7
 
+# GUI / EXE 使用导入的标定包，不依赖 PyTorch。
+# 本地 ASM + SGD 训练另装 calibration/requirements.txt。
+
 # 非 pip 依赖：
 # - 部分 DMD 命令行工具需要 Tkinter/Tcl/Tk；Conda 环境可安装 tk。
 # - 真实硬件需要 tools/3rdparty 中对应 SDK、配套 DLL、设备驱动及运行库。

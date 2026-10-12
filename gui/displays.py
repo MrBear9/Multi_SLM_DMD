@@ -109,11 +109,12 @@ class DisplayAdapter:
         else:
             self.sdk.open(self.display.index)
 
-    def show(self, path, settings):
+    def show(self, path, settings, *, calibration=False):
         transform = ImageTransform.from_settings(settings, self.key)
         if self.key == 'slm2':
             with Image.open(path) as image:
-                self._slm_source_size(image.size, path)
+                if not calibration:
+                    self._slm_source_size(image.size, path)
                 origin = magic_images.canvas_origin(transform.output_size(image.size), self.display,
                     settings['slm2OffsetXSpinBox'], settings['slm2OffsetYSpinBox'])
             data = magic_images.prepare_canvas(path, self.display, origin,
@@ -127,7 +128,8 @@ class DisplayAdapter:
                 image.verify()
                 if image.mode not in {'1', 'L', 'I', 'I;16'}:
                     raise ValueError(f'SLM1 phase image must be single-channel grayscale: {path}')
-                self._slm_source_size(image.size, path)
+                if not calibration:
+                    self._slm_source_size(image.size, path)
                 zkwx_images.canvas_origin(transform.output_size(image.size), self.display, offset_x, offset_y)
             if not self.demo:
                 self.sdk.dll.Timeout_ShowWindow(True)

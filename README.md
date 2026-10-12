@@ -13,6 +13,8 @@ python -m tools.apps.optical_control
 
 需要 `requirements-gui.txt` 中的依赖。运行步骤、软件同步行为与设备参数说明见 [MainWindow 使用说明](ui/README.md)。
 
+两页均提供“自动标定”入口。开发环境执行 ASM＋SGD 相位训练，打包版导入完整相位包后进行普通 DMD、双 SLM 和相机的反馈对准，无需 PyTorch；棋盘格仅用于 demo。安装、导入及精简打包命令见 [标定说明](calibration/README.md)，完整方案见 [标定流程](calibration/PLAN.md)。当前实现尚待实物光路验收。
+
 参数页支持独立配置 F4321 网络 DMD，与原有显示输出 DMD 二选一，共用第二页预览和操作。两者均可使用 8 位灰度、1 位二值及输入范围转换；F4321 自动生成并上传 BMP 副本，源文件保持不变。网络参数、板载曝光与软件切换间隔见 [F4321 使用说明](ui/README.md#f4321-dmd-与共用输入转换)。
 
 ## 代码结构与开发约定
@@ -22,6 +24,7 @@ python -m tools.apps.optical_control
 ```text
 tools/
   apps/                     # 参数解析、预览及多设备运行流程
+  calibration/              # ASM＋SGD 相位训练、相机反馈标定、方案和测试
   devices/
     zkwx_slm/               # 中科微兴 SLM1
       sdk.py                # ctypes 绑定、设备枚举及底层控制

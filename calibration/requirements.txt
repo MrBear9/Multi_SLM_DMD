@@ -1,0 +1,4 @@
+# Install from tools: python -m pip install -r calibration/requirements.txt
+-r ../requirements-gui.txt
+# Development only: ASM + SGD training. Not required by the packaged GUI.
+torch>=2.2,<3

@@ -156,6 +156,7 @@ class CameraWorker(QtCore.QThread):
         backend = None
         recorder = camera.VideoRecorder(20, 'MJPG')
         pending = []
+        calibration_batches = []
         recording_path = None
         last_frame_at = last_warning_at = time.monotonic()
         last_video_at = 0.0
@@ -176,6 +177,21 @@ class CameraWorker(QtCore.QThread):
                     try:
                         if action == 'parameters':
                             self.parametersChanged.emit(backend.apply(*args))
+                        elif action == 'calibration_parameters':
+                            request, exposure, gain, auto = args
+                            try:
+                                request.result = backend.apply(exposure, gain, auto)
+                                self.parametersChanged.emit(request.result)
+                            except Exception as exc:
+                                request.error = str(exc)
+                            finally:
+                                request.event.set()
+                        elif action == 'calibration_capture':
+                            calibration_batches.append(args[0])
+                        elif action == 'cancel_calibration':
+                            for batch in calibration_batches:
+                                batch.fail('标定采集已取消。')
+                            calibration_batches.clear()
                         elif action == 'capture':
                             pending.append(args[0])
                         elif action == 'cancel_captures':
@@ -233,6 +249,10 @@ class CameraWorker(QtCore.QThread):
                     raw_image, raw_metadata = backend.read()
                 except TimeoutError:
                     now = time.monotonic()
+                    for batch in calibration_batches[:]:
+                        if now > batch.deadline or batch.cancelled:
+                            batch.fail('标定采集超时或已取消。')
+                            calibration_batches.remove(batch)
                     if now - last_frame_at >= self.settings['ccdTimeoutSpinBox'] / 1000 and now - last_warning_at >= 2:
                         self.warning.emit('CCD 取帧超时，正在等待下一帧。')
                         last_warning_at = now
@@ -252,6 +272,14 @@ class CameraWorker(QtCore.QThread):
                             'raw_shape': list(current_raw.shape),
                             'image_transform': self.transform.as_dict()}
                 current_metadata = metadata
+                for batch in calibration_batches[:]:
+                    calibration_metadata = {**metadata, 'calibration_raw': True,
+                        'image_transform': ImageTransform().as_dict(),
+                        'preview_image_transform': self.transform.as_dict(),
+                        'read_started_at_monotonic': read_started}
+                    batch.offer(current_raw, calibration_metadata, read_started, last_frame_at)
+                    if batch.event.is_set():
+                        calibration_batches.remove(batch)
                 with self.lock:
                     self.latest = (image, metadata)
                 if recorder.active and last_frame_at - last_video_at >= 1 / recorder.fps:
@@ -270,6 +298,8 @@ class CameraWorker(QtCore.QThread):
         except Exception as exc:
             self.failed.emit(str(exc))
         finally:
+            for batch in calibration_batches:
+                batch.fail('相机已关闭。')
             try:
                 try:
                     recorder.stop()

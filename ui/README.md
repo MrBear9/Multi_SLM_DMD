@@ -47,23 +47,23 @@ python -m pip check
 python .\apps\optical_control.py --demo
 ```
 
-`tk` 为部分 DMD 命令行工具提供 Tkinter/Tcl/Tk；Qt 主界面使用 PyQt5。Tkinter、ctypes、msvcrt、unittest 等随 Python/其运行环境提供，不应作为同名 pip 包加入清单。当前工具未使用 PyTorch、SciPy、PyYAML 或 pywin32，无需因主项目的训练环境而一并安装。
+`tk` 为部分 DMD 命令行工具提供 Tkinter/Tcl/Tk；Qt 主界面使用 PyQt5。Tkinter、ctypes、msvcrt、unittest 等随 Python/其运行环境提供，不应作为同名 pip 包加入清单。自动标定在打包版中导入预先训练好的相位包，无需 PyTorch。仅本地开发训练额外安装 `calibration/requirements.txt`。SciPy、PyYAML 和 pywin32 不因主项目训练而自动成为此界面的依赖。
 
 ### 在 tools 目录打包 GUI
 
-使用目录模式生成 EXE，厂商 SDK 保持外置：
+使用现有的 `tools/Qing.spec`。它配置了目录模式、`Qing.exe` 名称、`lib` 依赖目录、界面及 `QIC.ico`，并排除 PyTorch 和开发训练模块。准备打包时在 `tools` 目录执行：
 
 ```powershell
-python -m PyInstaller --onedir --windowed --name MainWindow --paths .. --hidden-import tools.gui.main_window --add-data "ui/MainWindow.ui:tools/ui" .\apps\optical_control.py
+python -m PyInstaller --clean .\Qing.spec
 ```
 
-`--paths ..` 指向包含 `tools` 包的项目根目录；入口文件、资源源路径则相对于当前 `tools` 目录。`tools/ui` 是打包后的资源目标路径，需要保留这个包目录层级。生成后先检查演示模式：
+spec 根据自身目录定位入口、项目根目录和资源，不依赖启动命令时的工作目录。`tools/ui` 是包内资源目标路径，位于输出的 `lib` 目录下。生成后先检查演示模式：
 
 ```powershell
-.\dist\MainWindow\MainWindow.exe --demo
+.\dist\Qing\Qing.exe --demo
 ```
 
-发布时携带整个 `dist/MainWindow` 文件夹。上面的命令包含 GUI 资源；真实硬件连接时，在参数页为外置 SDK/DLL 选择绝对路径，并将输出目录设置到可写的固定位置。
+发布时携带整个 `dist/Qing` 文件夹。后续打包配置统一维护在 `Qing.spec` 中。真实硬件连接时，在参数页为外置 SDK/DLL 选择绝对路径，并将输出目录设置到可写的固定位置。完整标定训练目录另行复制，通过“导入相位包…”选择 `manifest.json`，详见 [标定包训练与使用](../calibration/README.md)。
 
 自行配置打包时需要保留这些资源和路径（下面的源码位置按项目根目录描述）：
 
@@ -71,11 +71,13 @@ python -m PyInstaller --onedir --windowed --name MainWindow --paths .. --hidden-
 - 界面：将 `tools/ui/MainWindow.ui` 作为数据文件收集到包内同名路径 `tools/ui/MainWindow.ui`。
 - 硬件库：SLM、CCD 和 F4321 SDK 由 ctypes 按配置路径加载。按原有目录结构收集实际设备所需的 DLL 及配套文件，或在配置页指定外置 SDK 的绝对路径；目标电脑仍需安装厂商设备驱动和运行库。不要修改 `tools/3rdparty` 原始文件。
 - 数据目录：打包后将输入、输出和外置 SDK 路径配置为绝对路径。当前相对路径基于包资源根目录解析，单文件模式下该目录可能是临时解压目录，不适合保存实验结果。
-- 对准图案生成工具另外引用主项目的 `models/SLM/physical_defaults.py`；独立携带该工具时需保留这个源码模块。GUI 入口没有这个依赖。
+- 旧图案生成工具及本地 ASM 训练需要主项目 `models`，只在开发环境使用。上面的 GUI 打包命令排除 `models` 和 PyTorch；导入标定包后的设备端流程只使用图像、NumPy 参考数组和 JSON 参数。
 
 PyInstaller 与 hooks 的安装说明见[官方文档](https://pyinstaller.org/en/stable/installation.html)；资源位置和手动收集 DLL 的规则见[运行时路径](https://pyinstaller.org/en/stable/runtime-information.html)与[ctypes 依赖](https://pyinstaller.org/en/stable/feature-notes.html#ctypes-dependencies)。本次仅整理依赖和打包说明，未生成或验证 EXE。
 
 ## 使用流程
+
+自动标定入口位于两页工具栏，使用步骤和限定光路见 [自动标定说明](../calibration/README.md)。打包版通过“导入相位包…”载入训练目录的 `manifest.json`，读取原始相机帧，验证通过后应用方向和偏移。本地开发模式另提供“仅训练相位图”；demo 棋盘格只用于预览。目前尚未实物验收。
 
 1. 初始页面填写实验名称、保存目录、各设备输入及 SDK 路径。只勾选这台电脑实际连接的设备。
 2. 通过“浏览…”选择文件或目录。DMD、SLM1、SLM2 输入载入后即可在第二页本地预览；未连接时的播放按钮只更新本地预览。

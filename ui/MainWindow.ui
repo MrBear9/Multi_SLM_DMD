@@ -1640,6 +1640,13 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="calibrationSetupButton">
+            <property name="text">
+             <string>自动标定…</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="connectDevicesButton">
             <property name="text">
              <string>连接设备</string>
@@ -1730,6 +1737,16 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
             </property>
             <property name="checked">
              <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="autoCalibrateButton">
+            <property name="text">
+             <string>自动标定 / 光路对准</string>
+            </property>
+            <property name="toolTip">
+             <string>配置 ASM＋SGD 训练和相机反馈标定；使用普通 DMD、双 SLM 与真实相机。demo 棋盘格不参与实物标定。</string>
             </property>
            </widget>
           </item>
