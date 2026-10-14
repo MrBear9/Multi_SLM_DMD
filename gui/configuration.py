@@ -51,12 +51,17 @@ def apply_values(window, values):
                           'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
                           'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
                           'dmdWhiteLevelSpinBox': 65535.0,
+                          'slmCaptureSourceComboBox': 'SLM 同步采集：关闭',
+                          'slmCaptureSettleSpinBox': 0.5,
                           'ccdPreviewIntervalSpinBox': 33}.items():
         if name in controls:
             values.setdefault(name, default)
     if values.get('dmdEnabledCheckBox', False) and values.get('f4321EnabledCheckBox', False):
         raise ValueError('第二页只有一路 DMD 预览，请只启用一种 DMD 硬件。')
-    selected_camera({**read_values(window), **values})
+    merged = {**read_values(window), **values}
+    selected_camera(merged)
+    if merged.get('synchronizeDmdCcdCheckBox', False) and merged.get('slmCaptureSourceComboBox') != 'SLM 同步采集：关闭':
+        raise ValueError('DMD 和 SLM 同步采集只能选择一个来源。')
     # Older configuration files predate the orientation controls.
     transform_suffixes = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
     for name in controls:
@@ -83,6 +88,7 @@ def apply_values(window, values):
     blockers = [QtCore.QSignalBlocker(w) for name, w in controls.items()
                 if name.endswith(transform_suffixes) or name.startswith('f4321')
                 or name.startswith('toupcam') or name == 'ccdEnabledCheckBox'
+                or name in ('slmCaptureSourceComboBox', 'synchronizeDmdCcdCheckBox')
                 or name in ('dmdEnabledCheckBox', 'dmdPixelModeComboBox', 'dmdThresholdSpinBox',
                             'dmdDitherCheckBox', 'dmdInputRangeComboBox',
                             'dmdBlackLevelSpinBox', 'dmdWhiteLevelSpinBox')]

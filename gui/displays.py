@@ -53,7 +53,7 @@ class DmdOutput(QtWidgets.QWidget):
 
 
 class DisplayAdapter:
-    def __init__(self, key, settings, paths, demo=False):
+    def __init__(self, key, settings, paths, demo=False, *, occupied=()):
         self.key, self.demo = key, demo
         self.sdk = self.output = self.display = None
         self.geometry = None
@@ -68,18 +68,21 @@ class DisplayAdapter:
             elif key == 'dmd':
                 monitors = zkwx.enumerate_monitors()
                 index = settings['dmdMonitorSpinBox']
-                if index >= len(monitors):
+                self.display = next((monitor for monitor in monitors if monitor.index == index), None)
+                if self.display is None:
                     raise ValueError(f'DMD 显示器 {index} 不存在。')
-                self.display = monitors[index]
             elif key == 'slm1':
                 self.display = zkwx_images.select_monitor(zkwx.enumerate_monitors(),
-                    None if settings['slm1MonitorSpinBox'] == -1 else settings['slm1MonitorSpinBox'])
+                    None if settings['slm1MonitorSpinBox'] == -1 else settings['slm1MonitorSpinBox'],
+                    occupied=occupied)
                 self.sdk = zkwx.ZhongkeTimeoutSDK(input_path(settings['slm1SdkPathEdit']))
             else:
                 self.sdk = magic.HDSLM8BitSDK(input_path(settings['slm2SdkPathEdit']))
                 self.display = magic_images.select_display(self.sdk.list_displays(),
                     None if settings['slm2DisplaySpinBox'] == -1 else settings['slm2DisplaySpinBox'])
             self.geometry = (self.display.left, self.display.top, self.display.width, self.display.height)
+            if not paths:
+                return  # Connection and zero-grey initialization need no user images.
             if key == 'slm2':
                 size = magic_images.validate_images(paths, self.display, transform)
                 magic_images.canvas_origin(size, self.display, settings['slm2OffsetXSpinBox'], settings['slm2OffsetYSpinBox'])

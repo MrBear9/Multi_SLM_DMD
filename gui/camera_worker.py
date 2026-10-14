@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from argparse import Namespace
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
@@ -112,6 +112,8 @@ class CaptureRequest:
     manifest: bool
     metadata: dict
     deadline: float
+    cancelled: threading.Event = field(default_factory=threading.Event)
+    discard_frames: int = 0
 
 
 def save_capture(request, image, metadata):
@@ -135,6 +137,7 @@ class CameraWorker(QtCore.QThread):
     failed = QtCore.pyqtSignal(str)
     warning = QtCore.pyqtSignal(str)
     captured = QtCore.pyqtSignal(str)
+    captureFinished = QtCore.pyqtSignal(str, bool, str)
     recordingChanged = QtCore.pyqtSignal(bool, str)
 
     def __init__(self, settings, demo=False, backend_factory=None, parent=None):
@@ -150,6 +153,9 @@ class CameraWorker(QtCore.QThread):
 
     def submit(self, action, *args):
         self.commands.put((action, args))
+
+    def finish_capture(self, request, success, message=''):
+        self.captureFinished.emit(request.metadata.get('capture_id', ''), success, message)
 
     def take_latest(self):
         with self.lock:
@@ -208,6 +214,10 @@ class CameraWorker(QtCore.QThread):
                             pending.append(args[0])
                         elif action == 'cancel_captures':
                             pending.clear()
+                        elif action == 'cancel_dmd_captures':
+                            pending[:] = [request for request in pending if not (
+                                request.metadata.get('automatic')
+                                and request.metadata.get('capture_source', 'dmd') == 'dmd')]
                         elif action == 'cancel_auto_captures':
                             pending[:] = [request for request in pending if not request.metadata.get('automatic')]
                         elif action == 'transform':
@@ -258,6 +268,7 @@ class CameraWorker(QtCore.QThread):
                         if action.startswith('record_'):
                             self.recordingChanged.emit(recorder.active, str(recording_path or ''))
                 now = time.monotonic()
+                pending[:] = [request for request in pending if not request.cancelled.is_set()]
                 if hasattr(backend, 'ensure_fresh'):
                     barriers = [request.after for request in (*pending, *calibration_batches)
                                 if request.after <= now]
@@ -278,7 +289,9 @@ class CameraWorker(QtCore.QThread):
                     for request in pending[:]:
                         if now > request.deadline:
                             pending.remove(request)
-                            self.warning.emit(f'采集超时，未保存：{request.path.name}')
+                            message = f'采集超时，未保存：{request.path.name}'
+                            self.warning.emit(message)
+                            self.finish_capture(request, False, message)
                     continue
                 # Preserve camera pixel values and channel ordering. Preview,
                 # PNG captures and AVI recording all consume this same result.
@@ -306,15 +319,25 @@ class CameraWorker(QtCore.QThread):
                     recorder.write(image)
                     last_video_at = last_frame_at
                 for request in pending[:]:
+                    if request.cancelled.is_set():
+                        pending.remove(request)
+                        continue
                     if read_started >= request.after:
+                        # A frame already exposing when the pattern settled can
+                        # still arrive on the next SDK read. Skip it for SLM runs.
+                        if request.discard_frames > 0 and last_frame_at <= request.deadline:
+                            request.discard_frames -= 1
+                            continue
                         pending.remove(request)
                         try:
                             if last_frame_at > request.deadline:
                                 raise TimeoutError(f'采集窗口已过期：{request.path.name}')
                             save_capture(request, image, metadata)
                             self.captured.emit(str(request.path))
+                            self.finish_capture(request, True)
                         except Exception as exc:
                             self.warning.emit(str(exc))
+                            self.finish_capture(request, False, str(exc))
         except Exception as exc:
             self.failed.emit(str(exc))
         finally:

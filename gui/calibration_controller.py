@@ -284,7 +284,7 @@ class CalibrationController(QtCore.QObject):
     def restore(self, values):
         window = self.window
         prepared = {key: window.prepare_frame(key, window.indices[key], values)
-                    for key in window.devices if window.paths[key]}
+                    for key in window.devices if window.paths[key] and key not in window.inputs.tests}
         # Validate all existing input frames as well as the currently displayed one.
         for key in prepared:
             for index in range(len(window.paths[key])):
@@ -292,6 +292,9 @@ class CalibrationController(QtCore.QObject):
         for key, frame in prepared.items():
             window.devices[key].show(window.paths[key][window.indices[key]], values)
             window.publish_frame(key, frame)
+        for key in window.devices:
+            if key not in prepared:
+                window.inputs.restore_display(key, values)
         for key in ('dmd', 'slm1', 'slm2'):
             for suffix in ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox',
                            'OffsetXSpinBox', 'OffsetYSpinBox'):

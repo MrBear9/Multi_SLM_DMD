@@ -141,11 +141,17 @@ def select_display(displays: list[SDKDisplay], requested: int | None) -> SDKDisp
         for display in displays
         if not display.primary and (display.width, display.height) == HDSLM45R_SIZE
     ]
-    if len(native_candidates) == 1:
-        return native_candidates[0]
-    if len(native_candidates) > 1:
+    named_candidates = [display for display in native_candidates
+                        if 'hdslm' in display.name.casefold() or 'magicholo' in display.name.casefold()]
+    if len(named_candidates) == 1:
+        return named_candidates[0]
+    candidates = named_candidates or native_candidates
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
         raise RuntimeError(
-            "More than one non-primary 1920x1080 display was found; pass --display explicitly."
+            "SLM2 自动选择存在多个候选，请按设备枚举结果指定 SDK display ID（不是 Windows monitor 编号）："
+            + '; '.join(f'SDK ID {d.index}: {d.name} @ ({d.left}, {d.top})' for d in candidates)
         )
     raise RuntimeError(
         "No unique non-primary 1920x1080 HDSLM45R display was found. Connect the SLM "

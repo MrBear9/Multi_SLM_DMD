@@ -29,19 +29,26 @@ def print_monitors(monitors: list[Monitor], selected_index: int | None = None) -
             f"at ({monitor.left}, {monitor.top}){suffix}"
         )
 
-def select_monitor(monitors: list[Monitor], requested_index: int | None) -> Monitor:
+def select_monitor(monitors: list[Monitor], requested_index: int | None,
+                   *, occupied=()) -> Monitor:
     if requested_index is not None:
-        if not 0 <= requested_index < len(monitors):
+        match = next((monitor for monitor in monitors if monitor.index == requested_index), None)
+        if match is None:
             raise ValueError(
-                f"--monitor {requested_index} is unavailable; choose 0..{len(monitors) - 1}."
+                f"--monitor {requested_index} is unavailable; choose from {[m.index for m in monitors]}."
             )
-        return monitors[requested_index]
-    for monitor in monitors:
-        if not monitor.primary:
-            return monitor
+        return match
+    candidates = [monitor for monitor in monitors if not monitor.primary
+                  and (monitor.left, monitor.top, monitor.width, monitor.height) not in occupied]
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        raise RuntimeError(
+            'SLM1 自动选择存在多个未占用的副屏，请指定 Windows monitor 编号：'
+            + '; '.join(f'monitor {m.index}: {m.width}x{m.height} @ ({m.left}, {m.top})' for m in candidates)
+        )
     raise RuntimeError(
-        "Only the primary display is available. Connect the SLM as an extended display, "
-        "set scaling to 100%, and run again."
+        'SLM1 没有可自动选择的未占用副屏。请检查扩展显示连接，或按设备枚举结果手动指定 Windows monitor 编号。'
     )
 
 

@@ -177,7 +177,7 @@ output/calibration/
 使用只安装 `requirements-gui.txt` 的干净环境，沿用现有的 `Qing.spec`。其中已排除训练模块和 PyTorch，并配置界面、`QIC.ico`、`Qing.exe` 名称和 `lib` 依赖目录。准备打包时执行：
 
 ```powershell
-python -m PyInstaller --clean .\Qing.spec
+python -m PyInstaller --clean --noconfirm .\Qing.spec
 ```
 
 发布整个 `dist/Qing` 文件夹，标定训练包另外携带并导入。厂商 SDK 仍按现有方式外置或自行收集；目标电脑需要驱动及运行库。外置输出目录设为可写绝对路径。已在禁止导入 `torch` 和 `models` 的隔离进程检查 GUI 导入及模拟标定流程；本次未构建 EXE，未做实物验收。

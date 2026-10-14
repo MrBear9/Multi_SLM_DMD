@@ -25,8 +25,8 @@ def selected_dmd(values):
     return selected[0] if selected else None
 
 
-def create_display(key, settings, paths, demo=False):
+def create_display(key, settings, paths, demo=False, *, occupied=()):
     if key == 'dmd' and settings.get('f4321EnabledCheckBox', False):
         from .f4321_display import F4321DisplayAdapter
         return F4321DisplayAdapter(settings, paths, demo)
-    return DisplayAdapter(key, settings, paths, demo)
+    return DisplayAdapter(key, settings, paths, demo, occupied=occupied)

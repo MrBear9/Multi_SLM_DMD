@@ -30,6 +30,7 @@ from .camera_worker import CameraWorker, CaptureRequest
 from .calibration_controller import CalibrationController
 from .ccd_detail import CcdDetailController
 from .toupcam_controls import ToupControls
+from .live_inputs import LiveInputs
 from ..utils.camera_settings import selected_camera, camera_value
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
@@ -62,10 +63,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preview_fps_started_at = None
         self.preview_fps_frames = 0
         self.settings = None
+        self.slm_capture_request = None
         self.camera_parameters = {}
         self.camera_preview_packet = None
         self.calibration = CalibrationController(self)
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
+        self.inputs = LiveInputs(self)
         self.demo_directory = None
         self.timers = {}
         for key in DISPLAY_KEYS:
@@ -113,6 +116,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for key in ('slm1', 'slm2'):
             getattr(self, key + 'ApplyOffsetButton').clicked.connect(partial(self.guard, partial(self.apply_offset, key)))
         self.synchronizeDmdCcdCheckBox.toggled.connect(self.capture_sync_changed)
+        self.slmCaptureSourceComboBox.currentIndexChanged.connect(self.slm_capture_sync_changed)
         self.ccdApplyParametersButton.clicked.connect(partial(self.guard, self.apply_camera_parameters))
         self.ccdCaptureButton.clicked.connect(partial(self.guard, self.capture_manual))
         self.ccdRecordButton.clicked.connect(partial(self.guard, self.toggle_recording))
@@ -294,7 +298,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.guard(lambda: write_configuration(Path(path), read_values(self)))
 
     def reload_safely(self, key):
-        if self.connected or self.device_task is not None:
+        if self.device_task is not None or self.calibration.active:
+            return
+        if key in self.devices:
+            if key == 'dmd' and self.network_dmd() is not None:
+                return
+            field = self.dmd_input_field() if key == 'dmd' else key + 'InputPathEdit'
+            self.inputs.import_safely({key: getattr(self, field).text()})
             return
         try:
             self.load_sequence(key)
@@ -339,11 +349,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 raise ValueError('DMD 同步采集需要同时启用 DMD 和 CCD。')
             if values['dmdSettleSpinBox'] >= values['dmdIntervalSpinBox']:
                 raise ValueError('DMD 采集前稳定时间必须小于播放间隔。')
+        source = self.slm_capture_source()
+        if source:
+            if values['synchronizeDmdCcdCheckBox']:
+                raise ValueError('DMD 和 SLM 同步采集只能选择一个来源。')
+            if source not in enabled or 'ccd' not in enabled:
+                raise ValueError(f'{source.upper()} 同步采集需要同时启用该 SLM 和相机。')
         for key in DISPLAY_KEYS:
-            if key in enabled:
+            if key == 'dmd' and key in enabled and values['f4321EnabledCheckBox']:
                 self.load_sequence(key)
-        if values['synchronizeSlmsCheckBox'] and 'slm1' in enabled and 'slm2' in enabled:
-            self.validate_pairs()
         input_path(values['outputDirectoryEdit'])
         if 'dmd' in enabled:
             options = DmdImageOptions.from_settings(values)
@@ -368,8 +382,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def check_parameters(self):
         self.validate()
-        self.statusBar().showMessage('文件、序列配对与参数检查通过。')
-        QtWidgets.QMessageBox.information(self, '参数检查', '参数检查通过，可连接设备。')
+        message = '连接参数检查通过。普通 DMD / SLM 无需输入图像即可连接；图像在导入、播放时另行检查。'
+        self.statusBar().showMessage(message)
+        QtWidgets.QMessageBox.information(self, '参数检查', message)
 
     def validate_pairs(self):
         if [p.stem for p in self.paths['slm1']] != [p.stem for p in self.paths['slm2']]:
@@ -379,12 +394,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.demo:
             QtWidgets.QMessageBox.information(self, '演示设备', 'DMD、SLM1、SLM2：虚拟显示区域\nCCD：合成图像源\n未访问真实 SDK。')
             return
-        lines = []
+        lines = ['编号说明：DMD / SLM1 使用 Windows monitor；SLM2 使用 SDK ID。两者按显示区域匹配，不能互换。']
+        monitors = []
         if self.f4321EnabledCheckBox.isChecked():
             lines.append(f'F4321：按配置网络地址查询 {self.f4321TargetIpEdit.text()}:{self.f4321TargetPortSpinBox.value()}；点击“连接设备”读取型号、面板尺寸并上传图像。')
         try:
-            for monitor in zkwx.enumerate_monitors():
-                lines.append(f'Windows monitor {monitor.index}: {monitor.width}×{monitor.height} @ ({monitor.left}, {monitor.top})')
+            monitors = zkwx.enumerate_monitors()
+            for monitor in monitors:
+                suffix = ' [主屏]' if monitor.primary else ''
+                lines.append(f'Windows monitor {monitor.index}: {monitor.width}×{monitor.height} @ ({monitor.left}, {monitor.top}){suffix}')
         except Exception as exc:
             lines.append(f'显示器枚举失败：{exc}')
         for enabled, factory, field, method, description in [
@@ -397,13 +415,19 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 api = factory(input_path(getattr(self, field).text()))
                 devices = getattr(api, method)()
-                lines.append(f'{description}：{len(devices)} 个设备')
+                lines.append(f'SLM2 SDK：{len(devices)} 个显示目标（含普通显示器）' if description == 'SLM2'
+                             else f'{description}：{len(devices)} 个设备')
                 for index, device in enumerate(devices):
                     if description == 'CCD':
                         identity = camera_identity(device)
                         lines.append(f'  {index}: {identity["friendly_name"] or "未命名"} / 型号：{identity["model"] or "未知"} / 序列号：{identity["serial"] or "未知"}')
                     else:
                         lines.append(f'  SDK ID {device.index}: {device.name} / {device.width}×{device.height} @ ({device.left}, {device.top})')
+                        matches = [m.index for m in monitors if
+                                   (m.left, m.top, m.width, m.height) ==
+                                   (device.left, device.top, device.width, device.height)]
+                        lines.append(f'    对应 Windows monitor {matches[0]}' if len(matches) == 1
+                                     else '    Windows monitor 无法唯一匹配，请检查扩展显示和缩放')
             except Exception as exc:
                 lines.append(f'{description} 枚举失败：{exc}')
             finally:
@@ -430,9 +454,15 @@ class MainWindow(QtWidgets.QMainWindow):
         settings = self.validate()
         devices = {}
         try:
-            for key in DISPLAY_KEYS:
+            # Resolve the named SLM2 before selecting SLM1 from the remaining monitors.
+            for key in ('dmd', 'slm2', 'slm1'):
                 if self.device_enabled(key, settings):
-                    devices[key] = self.display_factory(key, settings, self.paths[key], self.demo)
+                    paths = self.paths[key] if key == 'dmd' and settings['f4321EnabledCheckBox'] else []
+                    if self.display_factory is create_display:
+                        occupied = [device.geometry for device in devices.values() if device.geometry is not None]
+                        devices[key] = self.display_factory(key, settings, paths, self.demo, occupied=occupied)
+                    else:
+                        devices[key] = self.display_factory(key, settings, paths, self.demo)
             geometries = [device.geometry for device in devices.values() if device.geometry is not None]
             if len(set(geometries)) != len(geometries):
                 raise ValueError('DMD、SLM1、SLM2 不能使用同一个显示区域，请修改设备编号。')
@@ -483,7 +513,18 @@ class MainWindow(QtWidgets.QMainWindow):
             if device.output is not None:
                 device.output.closed.connect(self.disconnect_devices)
             getattr(self, key + 'StateLabel').setText('● 演示设备' if self.demo else '● 已连接')
-            self.render_frame(key, self.indices[key])
+            if device.geometry is not None:
+                display = device.display
+                identifier = f'SDK ID {display.index} / {display.name}' if key == 'slm2' else f'Windows monitor {display.index}'
+                getattr(self, key + 'StateLabel').setToolTip(
+                    f'实际选择：{identifier}\n{display.width}×{display.height} @ ({display.left}, {display.top})')
+            if key == 'dmd' and settings['f4321EnabledCheckBox']:
+                self.render_frame(key, self.indices[key])
+        try:
+            self.inputs.initialize()
+        except Exception:
+            self.disconnect_devices()
+            raise
         network = self.network_dmd()
         if network is not None:
             self.dmdDeviceInfoLabel.setText(f'缓存就绪 · {len(self.paths["dmd"])} 张')
@@ -496,6 +537,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.camera.failed.connect(self.on_camera_error)
                 self.camera.warning.connect(self.on_camera_warning)
                 self.camera.captured.connect(self.on_capture)
+                self.camera.captureFinished.connect(self.on_slm_capture_finished)
                 self.camera.recordingChanged.connect(self.on_recording)
                 self.camera.finished.connect(self.on_camera_finished)
                 self.ccdStateLabel.setText('● 连接中')
@@ -574,6 +616,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.statusBar().showMessage(f'{key} 关闭失败：{exc}')
                 self.devices[key] = device
             getattr(self, key + 'StateLabel').setText('● 关闭失败，请重试' if key in self.devices else '● 未连接')
+            if key not in self.devices:
+                getattr(self, key + 'StateLabel').setToolTip('')
         self.connected, self.camera_ready = bool(self.devices), False
         if self.camera is not None:
             self.camera.requestInterruption()
@@ -582,6 +626,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_actions()
 
     def on_camera_finished(self):
+        self.cancel_slm_capture()
+        for key in ('slm1', 'slm2'):
+            if self.slm_capture_source() == key:
+                self.pause(key)
         worker, self.camera = self.camera, None
         if worker is not None:
             worker.deleteLater()
@@ -610,10 +658,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def render_frame(self, key, index):
         self.publish_frame(key, self.prepare_frame(key, index))
 
-    def prepare_frame(self, key, index, values=None):
+    def prepare_frame(self, key, index, values=None, path=None):
         """Prepare and validate without changing the preview or hardware."""
         values = read_values(self) if values is None else values
-        path = self.paths[key][index]
+        path = self.paths[key][index] if path is None else path
         transform = ImageTransform.from_settings(values, key)
         background = values['slm2BackgroundSpinBox'] if key == 'slm2' else 0
         opened = prepare_image(path, DmdImageOptions.from_settings(values)) if key == 'dmd' else Image.open(path)
@@ -660,6 +708,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.require_capture_sync_ready()
         values = read_values(self)
         group = self.group_for(key)
+        source = self.slm_capture_source()
+        slm_capture = capture and source in group
+        if slm_capture:
+            self.require_slm_capture_ready()
+            if self.slm_capture_request is not None:
+                raise ValueError('请等待当前 SLM 图案采集保存完成。')
         prepared = {}
         for target in group:
             if not self.paths[target]:
@@ -673,8 +727,11 @@ class MainWindow(QtWidgets.QMainWindow):
             with QtCore.QSignalBlocker(getattr(self, target + 'FrameSpinBox')):
                 getattr(self, target + 'FrameSpinBox').setValue(index + 1)
             self.publish_frame(target, prepared[target])
+            self.inputs.tests.pop(target, None)
         if key == 'dmd' and capture and self.synchronizeDmdCcdCheckBox.isChecked():
             self.queue_capture(self.paths[key][index].stem + '.png', automatic=True)
+        elif slm_capture:
+            self.queue_capture(self.paths[source][index].stem + '.png', automatic=True, source=source)
 
     def interval(self, key):
         return getattr(self, key + 'IntervalSpinBox').value()
@@ -694,6 +751,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 raise ValueError('F4321 切图间隔不能小于一张图像的曝光与暗场时间之和。')
         if master == 'dmd' and self.synchronizeDmdCcdCheckBox.isChecked():
             self.require_capture_sync_ready()
+        if self.slm_capture_source() in group:
+            self.require_slm_capture_ready()
+            names = [p.stem.casefold() for p in self.paths[self.slm_capture_source()]]
+            if len(names) != len(set(names)):
+                raise ValueError('SLM 序列存在相同主文件名，无法一一对应保存；请先修改输入文件名。')
         self.pause(master)
         index = self.indices[master]
         if index == len(self.paths[master]) - 1:
@@ -704,6 +766,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_actions()
 
     def advance(self, key):
+        if (self.slm_capture_request is not None
+                and self.slm_capture_request.metadata['capture_master'] == key):
+            return  # Hold the physical pattern until the matching PNG is saved.
         index = self.indices[key] + 1
         if index >= len(self.paths[key]):
             if key == 'dmd' and self.dmdLoopCheckBox.isChecked():
@@ -720,8 +785,11 @@ class MainWindow(QtWidgets.QMainWindow):
         for target in targets:
             if target in self.timers:
                 self.timers[target].stop()
+        if (self.slm_capture_request is not None
+                and self.slm_capture_request.metadata['capture_source'] in targets):
+            self.cancel_slm_capture()
         if key == 'dmd' and self.camera is not None:
-            self.camera.submit('cancel_captures')
+            self.camera.submit('cancel_dmd_captures')
         # Hold the selected F4321 image by letting its bit planes keep cycling.
         # A board Stop would freeze/end the PWM needed for eight-bit grayscale.
         # stop_all/disconnect explicitly stop board playback instead.
@@ -746,10 +814,12 @@ class MainWindow(QtWidgets.QMainWindow):
             raise ValueError('请先连接设备。')
         if self.synchronizeDmdCcdCheckBox.isChecked():
             self.require_capture_sync_ready()
+        if self.slm_capture_source():
+            self.require_slm_capture_ready()
         started = set()
         # Send phase patterns before the first DMD exposure/capture window.
         for key in ('slm1', 'slm2', 'dmd'):
-            if key not in self.devices:
+            if key not in self.devices or not self.paths[key]:
                 continue
             if key in started:
                 continue
@@ -757,6 +827,7 @@ class MainWindow(QtWidgets.QMainWindow):
             started.update(self.group_for(key))
 
     def stop_all(self, *_):
+        self.cancel_slm_capture()
         self.calibration.cancel()
         for timer in self.timers.values():
             timer.stop()
@@ -775,6 +846,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_actions()
 
     def apply_offset(self, key='slm2'):
+        if self.slm_capture_running():
+            raise ValueError('请先暂停 SLM 同步采集，再修改偏移。')
         if self.paths[key]:
             # Validate the target canvas before sending either paired SLM frame.
             self.render_frame(key, self.indices[key])
@@ -828,10 +901,12 @@ class MainWindow(QtWidgets.QMainWindow):
                            for key in (*DISPLAY_KEYS, 'ccd')}
 
     def transform_editable(self, key):
+        if key in self.inputs.tests:
+            return False
         if self.calibration.active or self.disconnecting or self.device_task is not None:
             return False
         synchronized_capture = self.synchronizeDmdCcdCheckBox.isChecked() and self.timers['dmd'].isActive()
-        if synchronized_capture:
+        if synchronized_capture or self.slm_capture_running():
             return False
         if key == 'ccd':
             return not (self.recording or self.recording_pending or
@@ -900,8 +975,52 @@ class MainWindow(QtWidgets.QMainWindow):
             raise ValueError('稳定时间必须小于 DMD 播放间隔。')
 
     def capture_sync_changed(self, checked):
+        if checked:
+            with QtCore.QSignalBlocker(self.slmCaptureSourceComboBox):
+                self.slmCaptureSourceComboBox.setCurrentIndex(0)
+            self.cancel_slm_capture()
         if not checked and self.camera is not None:
             self.camera.submit('cancel_auto_captures')
+        self.update_actions()
+
+    def slm_capture_source(self):
+        return (None, 'slm1', 'slm2')[self.slmCaptureSourceComboBox.currentIndex()]
+
+    def slm_capture_running(self):
+        source = self.slm_capture_source()
+        targets = ('slm1', 'slm2') if self.synchronizeSlmsCheckBox.isChecked() else (source,)
+        return self.slm_capture_request is not None or bool(source and any(
+            self.timers[key].isActive() for key in targets))
+
+    def slm_capture_sync_changed(self, *_):
+        self.cancel_slm_capture()
+        if self.slm_capture_source():
+            self.synchronizeDmdCcdCheckBox.setChecked(False)
+        self.update_actions()
+
+    def cancel_slm_capture(self):
+        request, self.slm_capture_request = self.slm_capture_request, None
+        if request is not None:
+            request.cancelled.set()
+
+    def require_slm_capture_ready(self):
+        source = self.slm_capture_source()
+        if not source or not self.device_enabled(source) or not self.device_enabled('ccd'):
+            raise ValueError('SLM 同步采集需要同时启用所选 SLM 和相机。')
+        if (not self.connected or source not in self.devices or not self.camera_ready
+                or not self.received_frames or self.disconnecting or self.device_task is not None):
+            raise ValueError('SLM 同步采集需要先连接所选 SLM 和相机，并等待相机第一帧。')
+        if self.synchronizeDmdCcdCheckBox.isChecked():
+            raise ValueError('DMD 和 SLM 同步采集只能选择一个来源。')
+
+    def on_slm_capture_finished(self, capture_id, success, message):
+        request = self.slm_capture_request
+        if request is None or request.metadata['capture_id'] != capture_id:
+            return  # Ignore manual captures and late results from cancelled runs.
+        self.slm_capture_request = None
+        if not success:
+            self.pause(request.metadata['capture_master'])
+            self.on_camera_warning('SLM 同步采集已停止：' + message)
         self.update_actions()
 
     def apply_camera_parameters(self):
@@ -910,10 +1029,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera.submit('parameters', self.ccdExposureSpinBox.value(), self.ccdGainSpinBox.value(),
                            self.ccdAutoExposureCheckBox.isChecked())
 
-    def queue_capture(self, filename, automatic=False):
+    def queue_capture(self, filename, automatic=False, source='dmd'):
         if not self.camera_ready:
             raise ValueError('CCD 尚未就绪。')
-        if automatic:
+        slm_capture = automatic and source in ('slm1', 'slm2')
+        if slm_capture:
+            self.require_slm_capture_ready()
+        elif automatic:
             if not self.synchronizeDmdCcdCheckBox.isChecked():
                 return
             self.require_capture_sync_ready()
@@ -921,16 +1043,32 @@ class MainWindow(QtWidgets.QMainWindow):
         settings = self.settings
         after = now + self.dmdSettleSpinBox.value() if automatic else now
         deadline = now + self.interval('dmd') if automatic else now + max(5, camera_value(settings, 'TimeoutSpinBox', 500) / 1000)
+        if slm_capture:
+            after = now + self.slmCaptureSettleSpinBox.value()
+            deadline = after + max(5, camera_value(settings, 'TimeoutSpinBox', 500) / 1000,
+                                   3 * self.ccdExposureSpinBox.value() / 1e6 + 1)
         if not automatic and selected_camera(settings) == 'toupcam':
             # Fresh capture may discard an in-flight exposure before the saved one.
             deadline = max(deadline, now + 3*self.ccdExposureSpinBox.value()/1e6 + 1)
         metadata = {'experiment': settings['sessionNameEdit'], 'demo': self.demo, 'automatic': automatic,
-                    'display_files': {k: str(self.paths[k][self.indices[k]]) for k in self.devices},
+                    'display_files': {k: str(self.inputs.current_path(k)) for k in self.devices},
+                    'test_patterns': {k: name for k, (name, _) in self.inputs.tests.items() if k in self.devices},
                     'display_transforms': {k: self.transforms[k].as_dict() for k in self.devices},
                     'dmd_conversion': DmdImageOptions.from_settings(settings).as_dict(),
                     'dmd_backend': 'f4321' if settings.get('f4321EnabledCheckBox') else 'desktop'}
+        if slm_capture:
+            metadata.update(capture_source=source, capture_master=self.group_for(source)[0],
+                            capture_id=uuid4().hex,
+                            source_file=str(self.paths[source][self.indices[source]]),
+                            discard_after_settle=1,
+                            settle_seconds=self.slmCaptureSettleSpinBox.value())
         request = CaptureRequest(input_path(settings['outputDirectoryEdit']) / filename, after,
                                  settings['overwriteCheckBox'], settings['saveManifestCheckBox'], metadata, deadline)
+        if slm_capture:
+            if request.path.resolve() in {path.resolve() for paths in self.paths.values() for path in paths}:
+                raise ValueError('采集文件与输入图像路径相同，请更换保存目录，避免覆盖相位图。')
+            request.discard_frames = 1
+            self.slm_capture_request = request
         self.camera.submit('capture', request)
 
     def capture_manual(self):
@@ -1051,26 +1189,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.connectionStateLabel.setText(('● 演示模式 · ' if self.demo else '● ') +
             ('断开中' if self.disconnecting else '连接 / 上传中' if transferring else '连接中' if waiting else '设备已连接' if self.connected else '设备未连接'))
         sync_capture = self.synchronizeDmdCcdCheckBox.isChecked()
+        slm_source = self.slm_capture_source()
+        slm_running = self.slm_capture_running()
         network = self.network_dmd()
         network_ready = network is None or network.ready
-        self.startAllButton.setEnabled(self.connected and not (waiting and sync_capture) and not self.disconnecting and not transferring and network_ready)
+        paired = self.synchronizeSlmsCheckBox.isChecked() and all(self.device_enabled(k) for k in ('slm1', 'slm2'))
+        pair_ready = bool(self.paths['slm1'] and self.paths['slm2']) and (
+            [p.stem for p in self.paths['slm1']] == [p.stem for p in self.paths['slm2']])
+        playable = any(self.paths[k] and (k == 'dmd' or not paired or pair_ready) for k in self.devices)
+        source_ready = (not slm_source or bool(self.paths[slm_source])) and (not sync_capture or bool(self.paths['dmd']))
+        self.startAllButton.setEnabled(self.connected and playable and source_ready and not (waiting and (sync_capture or slm_source)) and not self.disconnecting and not transferring and network_ready)
         self.stopAllButton.setEnabled(running or self.recording or self.recording_pending or transferring or (network is not None and network.ready))
         self.synchronizeSlmsCheckBox.setEnabled(not busy and not running)
         self.synchronizeDmdCcdCheckBox.setEnabled(
             self.device_enabled('dmd') and self.device_enabled('ccd')
-            and not self.timers['dmd'].isActive() and not waiting and not self.disconnecting and not transferring)
+            and not self.timers['dmd'].isActive() and not slm_running and not waiting and not self.disconnecting and not transferring)
+        self.slmCaptureSourceComboBox.setEnabled(not running and not waiting and not self.disconnecting and not transferring)
+        self.slmCaptureSettleSpinBox.setEnabled(bool(slm_source) and not running and not self.disconnecting and not transferring)
         for key in DISPLAY_KEYS:
             usable = bool(self.paths[key]) and self.device_enabled(key) and not self.disconnecting and not transferring
+            if key in ('slm1', 'slm2') and paired:
+                usable = usable and pair_ready
             if busy:
-                usable = usable and key in self.devices and not (key == 'dmd' and sync_capture and waiting)
+                capture_member = key == slm_source or (slm_source and key in ('slm1', 'slm2') and self.synchronizeSlmsCheckBox.isChecked())
+                usable = usable and key in self.devices and not (((key == 'dmd' and sync_capture) or capture_member) and waiting)
             if key == 'dmd':
                 usable = usable and network_ready
             for suffix in ('PlayButton', 'PreviousButton', 'NextButton', 'FrameSpinBox'):
                 getattr(self, key + suffix).setEnabled(usable)
             getattr(self, key + 'PauseButton').setEnabled((running or (key == 'dmd' and network is not None and network_ready)) and usable)
         for key in ('slm1', 'slm2'):
-            getattr(self, key + 'ApplyOffsetButton').setEnabled(bool(self.paths[key]) and not self.disconnecting and not transferring)
-        self.ccdApplyParametersButton.setEnabled(self.camera_ready and not self.disconnecting and not transferring)
+            getattr(self, key + 'ApplyOffsetButton').setEnabled(bool(self.paths[key]) and key not in self.inputs.tests and not slm_running and not self.disconnecting and not transferring)
+        self.ccdApplyParametersButton.setEnabled(self.camera_ready and not slm_running and not self.disconnecting and not transferring)
         self.ccdCaptureButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.disconnecting and not transferring)
         self.ccdRecordButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.recording_pending and not self.disconnecting and not transferring)
         self.dmdIntervalSpinBox.setEnabled(not self.timers['dmd'].isActive())
@@ -1087,10 +1237,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.connectDevicesButton.setEnabled(self.connected or self.camera is not None)
             self.configurationScrollContents.setEnabled(False)
             for control in (self.startAllButton, self.synchronizeSlmsCheckBox,
+                            self.slmCaptureSourceComboBox, self.slmCaptureSettleSpinBox,
                             self.synchronizeDmdCcdCheckBox, self.loadConfigurationButton,
                             self.enumerateDevicesButton, self.validateConfigurationButton):
                 control.setEnabled(False)
             self.stopAllButton.setEnabled(True)
+        self.inputs.update_actions()
 
     def closeEvent(self, event):
         if self.calibration.active:
@@ -1116,6 +1268,7 @@ class MainWindow(QtWidgets.QMainWindow):
             event.ignore()
             return
         self.poll_timer.stop()
+        self.inputs.close()
         self.preview_fps_timer.stop()
         if self.demo_directory is not None:
             self.demo_directory.cleanup()

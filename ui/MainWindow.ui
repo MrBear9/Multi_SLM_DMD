@@ -481,6 +481,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                  </item>
                  <item row="3" column="1">
                   <widget class="QSpinBox" name="slm1MonitorSpinBox">
+                   <property name="toolTip">
+                    <string>使用设备枚举中的 Windows monitor 编号。自动选择排除主屏及 DMD、SLM2 已占用的显示区域；多个候选时需手动指定。</string>
+                   </property>
                    <property name="minimum">
                     <number>-1</number>
                    </property>
@@ -649,6 +652,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                  </item>
                  <item row="3" column="1">
                   <widget class="QSpinBox" name="slm2DisplaySpinBox">
+                   <property name="toolTip">
+                    <string>使用设备枚举中的 SDK ID，不能直接填写 Windows monitor 编号。自动选择优先识别非主屏、1920×1080 的 HDSLM / MagicHolo 名称。</string>
+                   </property>
                    <property name="minimum">
                     <number>-1</number>
                    </property>
@@ -2554,6 +2560,29 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
            </widget>
           </item>
           <item>
+           <widget class="QComboBox" name="slmCaptureSourceComboBox">
+            <property name="toolTip">
+             <string>选择 SLM1 或 SLM2 后，播放该路相位图时等待稳定并采集，按相位图主文件名保存 PNG；保存成功后才切换下一张。与 DMD 同步采集互斥。双 SLM 同步播放时按所选一路命名。</string>
+            </property>
+            <item><property name="text"><string>SLM 同步采集：关闭</string></property></item>
+            <item><property name="text"><string>SLM1 同步采集</string></property></item>
+            <item><property name="text"><string>SLM2 同步采集</string></property></item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="slmCaptureSettleSpinBox">
+            <property name="toolTip">
+             <string>SLM 相位图加载完成后的稳定等待时间。采集保存未完成时保持当前图案；播放间隔为最短停留时间。</string>
+            </property>
+            <property name="prefix"><string>稳定 </string></property>
+            <property name="suffix"><string> s</string></property>
+            <property name="decimals"><number>2</number></property>
+            <property name="maximum"><double>60.000000000000000</double></property>
+            <property name="singleStep"><double>0.100000000000000</double></property>
+            <property name="value"><double>0.500000000000000</double></property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="synchronizeSlmsCheckBox">
             <property name="text">
              <string>双 SLM 同步播放</string>
@@ -2829,6 +2858,18 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <property name="bottomMargin">
                      <number>0</number>
                     </property>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdInputActionsLayout">
+                      <item><widget class="QPushButton" name="dmdImportImagesButton">
+                       <property name="text"><string>导入图像…</string></property>
+                       <property name="toolTip"><string>连接后可更换图像或目录，成功后立即显示第一张。双 SLM 联动时一起选择两路输入。</string></property>
+                      </widget></item>
+                      <item><widget class="QPushButton" name="dmdTestPatternButton">
+                       <property name="text"><string>测试图案…</string></property>
+                       <property name="toolTip"><string>手动显示全黑、全白或棋盘格；不触发采集，不替换输入序列。F4321 请使用图像上传流程。</string></property>
+                      </widget></item>
+                     </layout>
+                    </item>
                     <item>
                      <widget class="QComboBox" name="dmdPreviewModeComboBox">
                       <item>
@@ -3427,6 +3468,18 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <property name="bottomMargin">
                      <number>0</number>
                     </property>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm1InputActionsLayout">
+                      <item><widget class="QPushButton" name="slm1ImportImagesButton">
+                       <property name="text"><string>导入图像…</string></property>
+                       <property name="toolTip"><string>连接后可更换图像或目录，成功后立即显示第一张。双 SLM 联动时一起选择两路输入。</string></property>
+                      </widget></item>
+                      <item><widget class="QPushButton" name="slm1TestPatternButton">
+                       <property name="text"><string>测试图案…</string></property>
+                       <property name="toolTip"><string>手动显示全黑、全白或棋盘格；不触发采集，不替换输入序列。F4321 请使用图像上传流程。</string></property>
+                      </widget></item>
+                     </layout>
+                    </item>
                     <item>
                      <widget class="QComboBox" name="slm1PreviewModeComboBox">
                       <item>
@@ -4056,6 +4109,18 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <property name="bottomMargin">
                      <number>0</number>
                     </property>
+                    <item>
+                     <layout class="QHBoxLayout" name="slm2InputActionsLayout">
+                      <item><widget class="QPushButton" name="slm2ImportImagesButton">
+                       <property name="text"><string>导入图像…</string></property>
+                       <property name="toolTip"><string>连接后可更换图像或目录，成功后立即显示第一张。双 SLM 联动时一起选择两路输入。</string></property>
+                      </widget></item>
+                      <item><widget class="QPushButton" name="slm2TestPatternButton">
+                       <property name="text"><string>测试图案…</string></property>
+                       <property name="toolTip"><string>手动显示全黑、全白或棋盘格；不触发采集，不替换输入序列。F4321 请使用图像上传流程。</string></property>
+                      </widget></item>
+                     </layout>
+                    </item>
                     <item>
                      <widget class="QComboBox" name="slm2PreviewModeComboBox">
                       <item>
