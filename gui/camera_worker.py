@@ -16,6 +16,8 @@ from PyQt5 import QtCore
 from ..devices.dvp2_camera import sdk as dvp
 from ..devices.dvp2_camera import controller as camera
 from ..utils.image_transforms import ImageTransform
+from ..utils.camera_settings import selected_camera, camera_value
+from ..devices.toupcam_camera.controller import ToupCamera
 from .configuration import input_path
 
 
@@ -138,10 +140,12 @@ class CameraWorker(QtCore.QThread):
     def __init__(self, settings, demo=False, backend_factory=None, parent=None):
         super().__init__(parent)
         self.settings = settings
-        self.factory = backend_factory or (DemoCamera if demo else RealCamera)
+        self.factory = backend_factory or (DemoCamera if demo else
+            ToupCamera if selected_camera(settings) == 'toupcam' else RealCamera)
         self.commands = queue.Queue()
         self.lock = threading.Lock()
         self.latest = None
+        self.latest_raw = None
         self.transform = ImageTransform.from_settings(settings, 'ccd')
 
     def submit(self, action, *args):
@@ -150,7 +154,15 @@ class CameraWorker(QtCore.QThread):
     def take_latest(self):
         with self.lock:
             latest, self.latest = self.latest, None
+            self.latest_raw = None
         return latest
+
+    def take_latest_with_raw(self):
+        """Drain one matched preview/raw pair; arrays are owned and never reused."""
+        with self.lock:
+            latest, raw = self.latest, self.latest_raw
+            self.latest = self.latest_raw = None
+        return None if latest is None else (*latest, raw)
 
     def run(self):
         backend = None
@@ -217,6 +229,7 @@ class CameraWorker(QtCore.QThread):
                                                     'image_transform': transform.as_dict()}
                                 with self.lock:
                                     self.latest = (current_image, current_metadata)
+                                    self.latest_raw = current_raw
                             if pending:
                                 pending.clear()
                                 self.warning.emit('CCD 图像方向已更改，待处理的采集已取消，请重新采集。')
@@ -244,6 +257,12 @@ class CameraWorker(QtCore.QThread):
                         self.warning.emit(str(exc))
                         if action.startswith('record_'):
                             self.recordingChanged.emit(recorder.active, str(recording_path or ''))
+                now = time.monotonic()
+                if hasattr(backend, 'ensure_fresh'):
+                    barriers = [request.after for request in (*pending, *calibration_batches)
+                                if request.after <= now]
+                    if barriers:
+                        backend.ensure_fresh(max(barriers))
                 read_started = time.monotonic()
                 try:
                     raw_image, raw_metadata = backend.read()
@@ -253,7 +272,7 @@ class CameraWorker(QtCore.QThread):
                         if now > batch.deadline or batch.cancelled:
                             batch.fail('标定采集超时或已取消。')
                             calibration_batches.remove(batch)
-                    if now - last_frame_at >= self.settings['ccdTimeoutSpinBox'] / 1000 and now - last_warning_at >= 2:
+                    if now - last_frame_at >= camera_value(self.settings, 'TimeoutSpinBox', 500) / 1000 and now - last_warning_at >= 2:
                         self.warning.emit('CCD 取帧超时，正在等待下一帧。')
                         last_warning_at = now
                     for request in pending[:]:
@@ -264,7 +283,7 @@ class CameraWorker(QtCore.QThread):
                 # Preserve camera pixel values and channel ordering. Preview,
                 # PNG captures and AVI recording all consume this same result.
                 current_raw = np.array(raw_image, copy=True, order='C')
-                image = self.transform.apply_array(current_raw)
+                image = current_raw if self.transform.is_identity else self.transform.apply_array(current_raw)
                 current_image = image
                 last_frame_at = time.monotonic()
                 metadata = {**raw_metadata,
@@ -282,6 +301,7 @@ class CameraWorker(QtCore.QThread):
                         calibration_batches.remove(batch)
                 with self.lock:
                     self.latest = (image, metadata)
+                    self.latest_raw = current_raw
                 if recorder.active and last_frame_at - last_video_at >= 1 / recorder.fps:
                     recorder.write(image)
                     last_video_at = last_frame_at

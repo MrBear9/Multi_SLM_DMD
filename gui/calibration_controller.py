@@ -18,6 +18,7 @@ from ..calibration.development import check_training, train_bundle
 from ..calibration.patterns import save_gray
 from ..calibration.runner import CalibrationRunner
 from ..utils.image_transforms import ImageTransform
+from ..utils.camera_settings import camera_roi
 from .configuration import pil_image_qimage, read_values, write_configuration
 
 
@@ -139,7 +140,7 @@ class CalibrationController(QtCore.QObject):
             for key in ('dmd', 'slm1', 'slm2', 'ccd'):
                 if not window.device_enabled(key):
                     raise ValueError('自动标定需要同时启用普通 DMD、SLM1、SLM2 和相机。')
-            if window.ccdRoiCheckBox.isChecked():
+            if camera_roi(read_values(window)):
                 raise ValueError('首轮标定需要完整相机画面，请关闭 ROI 并重新连接。')
             if not window.connected:
                 # No demo checkerboards or user's phase files are needed to connect.
@@ -167,10 +168,25 @@ class CalibrationController(QtCore.QObject):
     def camera_ready(self):
         if self.pending is not None:
             args, self.pending = self.pending, None
-            self._launch(*args)
+            try:
+                self._launch(*args)
+            except Exception as exc:
+                self.dialog.set_running(False)
+                self.progress(str(exc))
+                QtWidgets.QMessageBox.warning(self.window, '标定参数不匹配', str(exc))
 
     def _launch(self, config, output, training_only, bundle_path=None):
         window = self.window
+        if not training_only:
+            parameters = getattr(window, 'camera_parameters', {})
+            geometry = parameters.get('geometry')
+            if geometry:
+                if (geometry['resolution_index'] != 0 or geometry['hardware_binning'] != 1
+                        or geometry['software_binning'] != 1):
+                    raise ValueError('ToupTek 自动标定暂按原生采样验证：请选择最大分辨率、关闭硬件与软件 Binning。其他模式可正常预览与保存。')
+                pitch = parameters['camera'].get('pixel_size_um', [])
+                if len(pitch) == 2 and any(abs(config.camera_pitch_um - value) > .001 for value in pitch):
+                    raise ValueError(f'标定相机像元为 {config.camera_pitch_um:g} μm，SDK 返回 {pitch} μm；请核对标定参数和相位包。')
         window.stop_all()
         self.original = read_values(window)
         settings = dict(self.original)

@@ -28,6 +28,9 @@ from .dmd_backends import DMD_BACKENDS, selected_dmd, create_display
 from .device_task import DeviceTask
 from .camera_worker import CameraWorker, CaptureRequest
 from .calibration_controller import CalibrationController
+from .ccd_detail import CcdDetailController
+from .toupcam_controls import ToupControls
+from ..utils.camera_settings import selected_camera, camera_value
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
 TRANSFORM_SUFFIXES = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
@@ -38,6 +41,8 @@ class MainWindow(QtWidgets.QMainWindow):
                  camera_factory=CameraWorker):
         super().__init__()
         uic.loadUi(str(TOOLS_ROOT / 'ui' / 'MainWindow.ui'), self)
+        self.ccd_default_ranges = [(w.minimum(), w.maximum()) for w in
+                                  (self.ccdExposureSpinBox, self.ccdGainSpinBox)]
         self.ccd_default_title = self.ccdTitleLabel.text()
         self.ccd_default_tooltip = self.ccdTitleLabel.toolTip()
         self.demo = demo
@@ -57,6 +62,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preview_fps_started_at = None
         self.preview_fps_frames = 0
         self.settings = None
+        self.camera_parameters = {}
+        self.camera_preview_packet = None
         self.calibration = CalibrationController(self)
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
         self.demo_directory = None
@@ -83,7 +90,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dmdUploadButton.clicked.connect(partial(self.guard, self.reupload_dmd))
         for key in (*DISPLAY_KEYS, 'ccd'):
             getattr(self, key + 'ZoomComboBox').currentIndexChanged.connect(partial(self.refresh_preview, key))
-            getattr(self, key + 'EnabledCheckBox').toggled.connect(self.update_actions)
+            if key != 'ccd':
+                getattr(self, key + 'EnabledCheckBox').toggled.connect(self.update_actions)
             getattr(self, key + 'RotationSpinBox').valueChanged.connect(partial(self.transform_changed, key))
             for suffix in ('HorizontalFlipCheckBox', 'VerticalFlipCheckBox'):
                 getattr(self, key + suffix).toggled.connect(partial(self.transform_changed, key))
@@ -111,7 +119,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.outputDirectoryEdit.textChanged.connect(lambda text: self.capturePathLabel.setText('保存目录：' + text))
         self.poll_timer = QtCore.QTimer(self)
         self.poll_timer.timeout.connect(self.poll_camera)
-        self.ccdPreviewIntervalSpinBox.valueChanged.connect(self.poll_timer.setInterval)
         self.poll_timer.start(self.ccdPreviewIntervalSpinBox.value())
         self.preview_fps_timer = QtCore.QTimer(self)
         self.preview_fps_timer.setInterval(1000)
@@ -120,10 +127,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize_timer = QtCore.QTimer(self)
         self.resize_timer.setSingleShot(True)
         self.resize_timer.timeout.connect(self.refresh_all_previews)
+        self.ccd_detail = CcdDetailController(self)
+        self.toupcam = ToupControls(self)
+        self.mainTabWidget.currentChanged.connect(lambda _: self.refresh_preview('ccd'))
         if demo:
             self.setup_demo()
         if config_path:
             apply_values(self, read_configuration(config_path))
+        self.toupcam.update_interval()
+        self.toupcamRoiWidget.setEnabled(self.toupcamRoiCheckBox.isChecked())
         self.sync_transform_values()
         self.update_dmd_labels()
         for key in DISPLAY_KEYS:
@@ -142,6 +154,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def device_enabled(self, key, values=None):
         values = read_values(self) if values is None else values
+        if key == 'ccd':
+            return selected_camera(values) is not None
         return selected_dmd(values) is not None if key == 'dmd' else values[key + 'EnabledCheckBox']
 
     def dmd_input_field(self):
@@ -232,7 +246,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.f4321InputPathEdit.setText(str(folder))
         self.outputDirectoryEdit.setText('output/gui_demo')
         self.setWindowTitle('MainWindow · 演示模式（未连接真实硬件）')
-        self.subtitleLabel.setText('演示模式 · DMD / SLM 使用示例图案，CCD 为合成画面')
 
     def browse(self, name):
         current = getattr(self, name).text()
@@ -248,7 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择图像目录', current)
             else:
                 return
-        elif name in ('ccdDllPathEdit', 'f4321DllPathEdit'):
+        elif name in ('ccdDllPathEdit', 'f4321DllPathEdit', 'toupcamDllPathEdit'):
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择设备 DLL', current, 'DLL (*.dll)')
         else:
             path = QtWidgets.QFileDialog.getExistingDirectory(self, '选择目录', current)
@@ -267,6 +280,8 @@ class MainWindow(QtWidgets.QMainWindow):
             raise ValueError('请先断开设备，再载入配置。')
         self.stop_all()
         apply_values(self, read_configuration(path))
+        self.toupcam.update_interval()
+        self.toupcamRoiWidget.setEnabled(self.toupcamRoiCheckBox.isChecked())
         self.sync_transform_values()
         self.update_dmd_labels()
         for key in DISPLAY_KEYS:
@@ -342,7 +357,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.demo:
             for key, field, suffix in [('slm1', 'slm1SdkPathEdit', 'SecondDll.dll'),
                                        ('slm2', 'slm2SdkPathEdit', 'HDSLMFunc.dll'),
-                                       ('ccd', 'ccdDllPathEdit', '')]:
+                                       ('ccd', 'toupcamDllPathEdit' if selected_camera(values) == 'toupcam' else 'ccdDllPathEdit', '')]:
                 if key in enabled:
                     sdk_path = input_path(values[field])
                     if suffix:
@@ -394,6 +409,9 @@ class MainWindow(QtWidgets.QMainWindow):
             finally:
                 if api is not None:
                     api.close()
+        if self.toupcamEnabledCheckBox.isChecked():
+            self.toupcam.enumerate(lines)
+            return
         QtWidgets.QMessageBox.information(self, '设备枚举', '\n'.join(lines))
 
     def toggle_connection(self):
@@ -471,7 +489,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dmdDeviceInfoLabel.setText(f'缓存就绪 · {len(self.paths["dmd"])} 张')
             self.dmdDeviceInfoLabel.setToolTip(network.info_text)
         try:
-            if settings['ccdEnabledCheckBox']:
+            if self.device_enabled('ccd', settings):
                 self.camera = self.camera_factory(settings, self.demo, parent=self)
                 self.camera.ready.connect(self.on_camera_ready)
                 self.camera.parametersChanged.connect(self.on_camera_parameters)
@@ -495,6 +513,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.disconnecting:
             return
         self.camera_ready = True
+        self.camera_parameters = dict(parameters)
+        self.toupcam.ready(parameters)
+        self.ccd_detail.start_session(parameters.get('camera', {}), self.settings or {})
         self.reset_preview_fps()
         self.preview_fps_started_at = time.monotonic()
         self.preview_fps_timer.start()
@@ -506,13 +527,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 f'序列号：{identity.get("serial") or "未知"}\n'
                 f'设备名称：{identity.get("friendly_name") or "未命名"}')
         else:
-            self.ccdTitleLabel.setToolTip('演示模式：使用合成图像，未连接 M3ST130-H-02C 实物。')
+            self.ccdTitleLabel.setToolTip('演示模式：使用合成图像，未连接真实相机。')
         self.on_camera_parameters(parameters)
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 已连接')
         self.update_actions()
         self.calibration.camera_ready()
 
     def on_camera_parameters(self, parameters):
+        self.camera_parameters.update(parameters)
+        for field, key, default in [(self.ccdExposureSpinBox, 'exposure_range', self.ccd_default_ranges[0]),
+                                    (self.ccdGainSpinBox, 'gain_range', self.ccd_default_ranges[1])]:
+            field.setRange(*parameters.get(key, default))
         self.ccdExposureSpinBox.setValue(parameters['exposure'])
         self.ccdGainSpinBox.setValue(parameters['gain'])
         self.ccdAutoExposureCheckBox.setChecked(parameters['auto'])
@@ -563,6 +588,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_ready = self.recording = self.recording_pending = False
         self.disconnecting = False
         self.ccdStateLabel.setText('● 未连接')
+        self.ccd_detail.clear()
+        self.toupcam.disconnected()
+        self.camera_parameters = {}
+        self.camera_preview_packet = None
+        for control, limits in zip((self.ccdExposureSpinBox, self.ccdGainSpinBox), self.ccd_default_ranges):
+            control.setRange(*limits)
         self.reset_preview_fps()
         self.ccdTitleLabel.setText(self.ccd_default_title)
         self.ccdTitleLabel.setToolTip(self.ccd_default_tooltip)
@@ -858,7 +889,7 @@ class MainWindow(QtWidgets.QMainWindow):
             raise
 
     def require_capture_sync_ready(self):
-        if not self.device_enabled('dmd') or not self.ccdEnabledCheckBox.isChecked():
+        if not self.device_enabled('dmd') or not self.device_enabled('ccd'):
             raise ValueError('DMD 同步采集需要同时启用 DMD 和 CCD。')
         if not self.connected or 'dmd' not in self.devices or not self.camera_ready or not self.received_frames:
             raise ValueError('DMD 同步采集需要先连接 DMD 和 CCD，并等待相机第一帧。')
@@ -889,7 +920,10 @@ class MainWindow(QtWidgets.QMainWindow):
         now = time.monotonic()
         settings = self.settings
         after = now + self.dmdSettleSpinBox.value() if automatic else now
-        deadline = now + self.interval('dmd') if automatic else now + max(5, self.ccdTimeoutSpinBox.value() / 1000)
+        deadline = now + self.interval('dmd') if automatic else now + max(5, camera_value(settings, 'TimeoutSpinBox', 500) / 1000)
+        if not automatic and selected_camera(settings) == 'toupcam':
+            # Fresh capture may discard an in-flight exposure before the saved one.
+            deadline = max(deadline, now + 3*self.ccdExposureSpinBox.value()/1e6 + 1)
         metadata = {'experiment': settings['sessionNameEdit'], 'demo': self.demo, 'automatic': automatic,
                     'display_files': {k: str(self.paths[k][self.indices[k]]) for k in self.devices},
                     'display_transforms': {k: self.transforms[k].as_dict() for k in self.devices},
@@ -940,19 +974,35 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         fps = self.preview_fps_frames / elapsed
         self.ccdActiveAreaLabel.setText(f'预览 {fps:.1f} FPS')
+        self.ccd_detail.update_status()
+        self.toupcam.update_fps()
+        if self.camera_preview_packet is not None:
+            metadata = self.camera_preview_packet[1]
+            if metadata.get('auto'):
+                for field, key in [(self.ccdExposureSpinBox, 'exposure'), (self.ccdGainSpinBox, 'gain')]:
+                    if not field.hasFocus():
+                        with QtCore.QSignalBlocker(field):
+                            field.setValue(metadata[key])
         self.preview_fps_started_at = now
         self.preview_fps_frames = 0
 
     def poll_camera(self):
         if self.camera is None or self.disconnecting:
             return
-        packet = self.camera.take_latest()
+        if hasattr(self.camera, 'take_latest_with_raw'):
+            packet = self.camera.take_latest_with_raw()
+        else:
+            legacy = self.camera.take_latest()
+            packet = None if legacy is None else (*legacy, legacy[0] if
+                ImageTransform(**legacy[1].get('image_transform', {})).is_identity else None)
         if packet is None:
             return
-        image, metadata = packet
+        image, metadata, raw = packet
         self.received_frames += 1
-        self.images['ccd'] = camera_qimage(image)
+        self.camera_preview_packet = (image, metadata)
+        self.ccd_detail.receive(raw, metadata)
         self.refresh_preview('ccd')
+        self.toupcam.acquisition_fps = metadata.get('acquisition_fps')
         self.preview_fps_frames += 1
         raw_shape = metadata.get('raw_shape', image.shape)
         self.ccdPanelInfoLabel.setText(f'采集 {raw_shape[1]} × {raw_shape[0]}')
@@ -962,6 +1012,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_actions()
 
     def refresh_preview(self, key, *_):
+        if key == 'ccd' and self.camera_preview_packet is not None:
+            if self.mainTabWidget.currentWidget() is not self.previewPage:
+                return
+            array, metadata = self.camera_preview_packet
+            if self.ccdZoomComboBox.currentIndex() == 0:
+                # Only the overview is downsampled; captures and detail retain raw pixels.
+                step = max(1, max(array.shape[:2]) // max(1, self.ccdPreviewLabel.width()*2))
+                array = np.ascontiguousarray(array[::step, ::step])
+            self.images['ccd'] = camera_qimage(array)
         if key in self.images:
             image = self.images[key]
             if key in DISPLAY_KEYS and getattr(self, key + 'PreviewModeComboBox').currentIndex() == 0:
@@ -982,7 +1041,7 @@ class MainWindow(QtWidgets.QMainWindow):
         transferring = self.device_task is not None
         busy = self.connected or self.camera is not None or self.disconnecting or transferring or bool(self.devices)
         running = any(timer.isActive() for timer in self.timers.values())
-        waiting = self.connected and self.settings and self.settings['ccdEnabledCheckBox'] and (not self.camera_ready or not self.received_frames)
+        waiting = self.connected and self.settings and self.device_enabled('ccd', self.settings) and (not self.camera_ready or not self.received_frames)
         self.configurationScrollContents.setEnabled(not busy)
         self.loadConfigurationButton.setEnabled(not busy)
         self.enumerateDevicesButton.setEnabled(not busy)
@@ -998,7 +1057,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stopAllButton.setEnabled(running or self.recording or self.recording_pending or transferring or (network is not None and network.ready))
         self.synchronizeSlmsCheckBox.setEnabled(not busy and not running)
         self.synchronizeDmdCcdCheckBox.setEnabled(
-            self.device_enabled('dmd') and self.ccdEnabledCheckBox.isChecked()
+            self.device_enabled('dmd') and self.device_enabled('ccd')
             and not self.timers['dmd'].isActive() and not waiting and not self.disconnecting and not transferring)
         for key in DISPLAY_KEYS:
             usable = bool(self.paths[key]) and self.device_enabled(key) and not self.disconnecting and not transferring

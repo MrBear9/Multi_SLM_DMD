@@ -10,6 +10,9 @@ from PIL import Image
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..utils.paths import resolve_path
+from ..utils.camera_settings import selected_camera
+
+DYNAMIC_CAMERA_FIELDS = {'toupcamDeviceComboBox', 'toupcamResolutionComboBox'}
 
 SCHEMA_VERSION = 1
 EDITORS = (QtWidgets.QLineEdit, QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox,
@@ -19,6 +22,8 @@ EDITORS = (QtWidgets.QLineEdit, QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox,
 def editors(window):
     return {w.objectName(): w for cls in EDITORS for w in window.findChildren(cls)
             if w.objectName() and not w.objectName().startswith('qt_')
+            and (not w.objectName().startswith('ccdDetail')
+                 or w.objectName() == 'ccdDetailAutoOpenCheckBox')
             and not w.objectName().endswith('FrameSpinBox')}
 
 
@@ -30,7 +35,7 @@ def read_values(window):
         elif isinstance(w, QtWidgets.QCheckBox):
             result[name] = w.isChecked()
         elif isinstance(w, QtWidgets.QComboBox):
-            result[name] = w.currentText()
+            result[name] = (w.currentData() or '') if name in DYNAMIC_CAMERA_FIELDS else w.currentText()
         else:
             result[name] = w.value()
     return result
@@ -42,7 +47,7 @@ def apply_values(window, values):
         raise ValueError('配置 values 必须是 JSON 对象。')
     controls = editors(window)
     values = dict(values)
-    for name, default in {'f4321EnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
+    for name, default in {'f4321EnabledCheckBox': False, 'toupcamEnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
                           'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
                           'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
                           'dmdWhiteLevelSpinBox': 65535.0,
@@ -51,6 +56,7 @@ def apply_values(window, values):
             values.setdefault(name, default)
     if values.get('dmdEnabledCheckBox', False) and values.get('f4321EnabledCheckBox', False):
         raise ValueError('第二页只有一路 DMD 预览，请只启用一种 DMD 硬件。')
+    selected_camera({**read_values(window), **values})
     # Older configuration files predate the orientation controls.
     transform_suffixes = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
     for name in controls:
@@ -65,7 +71,7 @@ def apply_values(window, values):
         elif isinstance(w, QtWidgets.QCheckBox):
             valid = isinstance(value, bool)
         elif isinstance(w, QtWidgets.QComboBox):
-            valid = isinstance(value, str) and w.findText(value) >= 0
+            valid = isinstance(value, str) and (name in DYNAMIC_CAMERA_FIELDS or w.findText(value) >= 0)
         else:
             valid = type(value) in (int, float) and w.minimum() <= value <= w.maximum()
             if isinstance(w, QtWidgets.QSpinBox):
@@ -76,6 +82,7 @@ def apply_values(window, values):
     # an intermediate pattern while the rest of the document is being loaded.
     blockers = [QtCore.QSignalBlocker(w) for name, w in controls.items()
                 if name.endswith(transform_suffixes) or name.startswith('f4321')
+                or name.startswith('toupcam') or name == 'ccdEnabledCheckBox'
                 or name in ('dmdEnabledCheckBox', 'dmdPixelModeComboBox', 'dmdThresholdSpinBox',
                             'dmdDitherCheckBox', 'dmdInputRangeComboBox',
                             'dmdBlackLevelSpinBox', 'dmdWhiteLevelSpinBox')]
@@ -87,7 +94,14 @@ def apply_values(window, values):
             elif isinstance(w, QtWidgets.QCheckBox):
                 w.setChecked(value)
             elif isinstance(w, QtWidgets.QComboBox):
-                w.setCurrentText(value)
+                if name in DYNAMIC_CAMERA_FIELDS:
+                    index = w.findData(value)
+                    if index < 0:
+                        w.addItem(value or '自动选择', value)
+                        index = w.count()-1
+                    w.setCurrentIndex(index)
+                else:
+                    w.setCurrentText(value)
             else:
                 w.setValue(value)
     finally:

@@ -1,17 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import struct
 
 # PyInstaller supplies SPECPATH as the directory containing this spec file.
 tools_dir = Path(SPECPATH).resolve()
+icon_file = tools_dir / 'ui' / 'QIC.ico'
+if not icon_file.is_file():
+    raise FileNotFoundError(f'Application icon not found: {icon_file}')
 
 a = Analysis(
     [str(tools_dir / 'apps' / 'optical_control.py')],
     pathex=[str(tools_dir.parent)],
-    binaries=[],
+    binaries=[(str(tools_dir / '3rdparty' / 'toupcamsdk' / 'win' /
+                   ('x64' if struct.calcsize('P') == 8 else 'x86') / 'toupcam.dll'),
+               'tools/3rdparty/toupcamsdk/win/' + ('x64' if struct.calcsize('P') == 8 else 'x86'))],
     datas=[
         (str(tools_dir / 'ui' / 'MainWindow.ui'), 'tools/ui'),
-        (str(tools_dir / 'ui' / 'QIC.ico'), 'tools/ui'),
+        # Runtime Qt window/taskbar icon; EXE icon alone does not set this.
+        (str(icon_file), 'tools/ui'),
     ],
     hiddenimports=['tools.gui.main_window'],
     hookspath=[],
@@ -48,7 +55,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=[str(tools_dir / 'ui' / 'QIC.ico')],
+    icon=[str(icon_file)],
     contents_directory='lib',
 )
 coll = COLLECT(

@@ -24,7 +24,7 @@
 QMainWindow, QWidget#centralWidget { background: #f3f6fb; }
 QWidget { font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; font-size: 12px; color: #26354b; }
 QLabel#titleLabel { font-size: 24px; font-weight: 600; color: #13243b; }
-QLabel#subtitleLabel, QLabel#sessionHintLabel, QLabel#previewHintLabel { color: #687b92; }
+QLabel#sessionHintLabel, QLabel#previewHintLabel { color: #687b92; }
 QLabel#connectionStateLabel { color: #62758d; background: #e6ecf5; border-radius: 12px; padding: 8px 14px; }
 QTabWidget::pane { border: 1px solid #d9e2ed; background: #f8fafc; border-radius: 8px; }
 QTabBar::tab { background: #e8eef6; color: #60728b; padding: 12px 30px; margin-right: 6px; border-top-left-radius: 7px; border-top-right-radius: 7px; font-weight: 600; }
@@ -59,18 +59,30 @@ QFrame#dmdPreviewCard QPushButton, QFrame#slm1PreviewCard QPushButton, QFrame#sl
 QWidget#dmdControlsWidget, QWidget#slm1ControlsWidget, QWidget#slm2ControlsWidget, QWidget#ccdControlsWidget { background: transparent; }
 QWidget#dmdControlsWidget QComboBox, QWidget#slm1ControlsWidget QComboBox, QWidget#slm2ControlsWidget QComboBox, QWidget#ccdControlsWidget QComboBox { min-height: 18px; padding: 4px 7px; }
 QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget#slm2ControlsWidget QSpinBox, QWidget#ccdControlsWidget QDoubleSpinBox { min-height: 18px; padding: 4px 5px; }
+
+QLabel#ccdDetailTitleLabel { font-size: 16px; font-weight: 600; color: #203958; }
+QLabel#ccdDetailStateLabel, QLabel#ccdDetailImageSizeLabel, QLabel#ccdDetailFrameLabel, QLabel#ccdDetailCursorLabel, QLabel#ccdDetailPixelValueLabel, QLabel#ccdDetailNavigatorHintLabel, QLabel#ccdDetailRoiCoordinatesLabel, QLabel#ccdDetailInteractionHintLabel { color: #687b92; }
+QFrame#ccdDetailToolbar, QFrame#ccdDetailCanvasCard { background: white; border: 1px solid #d8e2ef; border-radius: 8px; }
+QFrame#ccdDetailToolbar QPushButton { padding: 6px 12px; }
+QFrame#ccdDetailToolbar QPushButton:checked { background: #e7f0ff; color: #2468d4; border-color: #8db3ed; }
+QGraphicsView#ccdDetailGraphicsView, QLabel#ccdDetailNavigatorLabel { background: #101b2b; color: #8ea4c0; border-radius: 5px; }
+QWidget#ccdDetailSidebarContents { background: #f8fafc; }
+QWidget#ccdDetailSidebarContents QPushButton { padding: 6px 8px; }
+QWidget#ccdDetailSidebarContents QSpinBox { padding: 4px 5px; }
+QLabel#ccdDetailRoiScopeLabel { color: #687b92; font-size: 11px; }
+QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-color: #286bdb; }
 </string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="mainLayout">
     <property name="spacing">
-     <number>10</number>
+     <number>8</number>
     </property>
     <property name="leftMargin">
      <number>20</number>
     </property>
     <property name="topMargin">
-     <number>20</number>
+     <number>12</number>
     </property>
     <property name="rightMargin">
      <number>20</number>
@@ -84,25 +96,11 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
        <number>10</number>
       </property>
       <item>
-       <layout class="QVBoxLayout" name="headingLayout">
-        <property name="spacing">
-         <number>10</number>
+       <widget class="QLabel" name="titleLabel">
+        <property name="text">
+         <string>光学实验控制台</string>
         </property>
-        <item>
-         <widget class="QLabel" name="titleLabel">
-          <property name="text">
-           <string>光学实验控制台</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="subtitleLabel">
-          <property name="text">
-           <string>DMD 输入  /  双 SLM 相位调制  /  CCD 图像采集</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       </widget>
       </item>
       <item>
        <spacer name="headerLayoutSpacer">
@@ -1563,6 +1561,831 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                   <widget class="QLabel" name="dmdConversionHintLabel">
                    <property name="text">
                     <string>保留原始文件，仅转换发送副本；不缩放图像。先转换，再旋转或翻转。F4321 请选择 1 位或 8 位，播放间隔在第二页设置。</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="2">
+               <widget class="QGroupBox" name="toupcamConfigurationGroupBox">
+                <property name="title">
+                 <string>相机 · ToupTek / IUC26000KMA</string>
+                </property>
+                <layout class="QVBoxLayout" name="toupcamConfigurationLayout">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="toupcamDesignNoticeLabel">
+                   <property name="text">
+                    <string>与度申相机二选一 · 共用第二页 / 第三页预览 · 型号、像元与实际采集尺寸由 SDK 读取。</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string>color: #805a19; background: #fff6e5; border-radius: 5px; padding: 8px; font-weight: normal;</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="toupcamColumnsLayout" stretch="1,1">
+                   <property name="spacing">
+                    <number>28</number>
+                   </property>
+                   <item>
+                    <widget class="QWidget" name="toupcamDeviceWidget">
+                     <layout class="QVBoxLayout" name="toupcamDeviceLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="toupcamDeviceTitleLabel">
+                        <property name="text">
+                         <string>设备与图像输出</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <layout class="QFormLayout" name="toupcamDeviceForm">
+                        <property name="fieldGrowthPolicy">
+                         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                        </property>
+                        <property name="labelAlignment">
+                         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                        </property>
+                        <property name="spacing">
+                         <number>10</number>
+                        </property>
+                        <item row="0" column="0">
+                         <widget class="QLabel" name="toupcamEnabledCheckBoxLabel">
+                          <property name="text">
+                           <string>设备状态</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamEnabledCheckBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QCheckBox" name="toupcamEnabledCheckBox">
+                          <property name="text">
+                           <string>启用 ToupTek 相机</string>
+                          </property>
+                          <property name="enabled">
+                           <bool>true</bool>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QLabel" name="toupcamDllPathLayoutLabel">
+                          <property name="text">
+                           <string>SDK DLL</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <layout class="QHBoxLayout" name="toupcamDllPathLayout">
+                          <property name="spacing">
+                           <number>8</number>
+                          </property>
+                          <item>
+                           <widget class="QLineEdit" name="toupcamDllPathEdit">
+                            <property name="text">
+                             <string>tools/3rdparty/toupcamsdk/win/x64/toupcam.dll</string>
+                            </property>
+                            <property name="toolTip">
+                             <string>64 位 Python 使用 x64 DLL；32 位环境需改为 x86。连接前可更改 DLL 路径。</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="toupcamDllPathEditBrowseButton">
+                            <property name="text">
+                             <string>浏览…</string>
+                            </property>
+                            <property name="enabled">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
+                        <item row="2" column="0">
+                         <widget class="QLabel" name="toupcamDeviceLayoutLabel">
+                          <property name="text">
+                           <string>选择设备</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="1">
+                         <layout class="QHBoxLayout" name="toupcamDeviceSelectorLayout">
+                          <property name="spacing">
+                           <number>8</number>
+                          </property>
+                          <item>
+                           <widget class="QComboBox" name="toupcamDeviceComboBox">
+                            <item>
+                             <property name="text">
+                              <string>待枚举 · 按设备 ID 选择</string>
+                             </property>
+                            </item>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="toupcamEnumerateButton">
+                            <property name="text">
+                             <string>枚举设备</string>
+                            </property>
+                            <property name="enabled">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
+                        <item row="3" column="0">
+                         <widget class="QLabel" name="toupcamIdentityLabelLabel">
+                          <property name="text">
+                           <string>设备信息</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamIdentityLabel</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="3" column="1">
+                         <widget class="QLabel" name="toupcamIdentityLabel">
+                          <property name="text">
+                           <string>型号 / 序列号：待连接读取
+像元 / 单色或彩色：待设备确认</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="styleSheet">
+                           <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="4" column="0">
+                         <widget class="QLabel" name="toupcamResolutionComboBoxLabel">
+                          <property name="text">
+                           <string>输出分辨率</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamResolutionComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="4" column="1">
+                         <widget class="QComboBox" name="toupcamResolutionComboBox">
+                          <property name="toolTip">
+                           <string>由 SDK 枚举实际分辨率列表，采集开始前设置；不把资料中的分辨率写成固定限制。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>连接后读取可用分辨率</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                        <item row="5" column="0">
+                         <widget class="QLabel" name="toupcamFormatComboBoxLabel">
+                          <property name="text">
+                           <string>输出数据</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamFormatComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="5" column="1">
+                         <widget class="QComboBox" name="toupcamFormatComboBox">
+                          <property name="toolTip">
+                           <string>按单色相机设计，连接后检查 MONO 能力标志。16 位是存储容器，传感器有效位深由 SDK 读取；显示转换不改变保存数据。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>原始灰度 16 位（uint16）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>原始灰度 8 位（uint8）</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                        <item row="6" column="0">
+                         <widget class="QLabel" name="toupcamHardwareBinningComboBoxLabel">
+                          <property name="text">
+                           <string>硬件 Binning</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamHardwareBinningComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="6" column="1">
+                         <widget class="QComboBox" name="toupcamHardwareBinningComboBox">
+                          <property name="toolTip">
+                           <string>连接后以 SDK 支持列表为准；与分辨率模式的对应关系需读取验证，不能直接重复相乘。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>不合并（1 × 1）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>2 × 2（平均，按 SDK 支持）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>3 × 3（平均，按 SDK 支持）</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                        <item row="7" column="0">
+                         <widget class="QLabel" name="toupcamSoftwareBinningComboBoxLabel">
+                          <property name="text">
+                           <string>软件 Binning</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamSoftwareBinningComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="7" column="1">
+                         <widget class="QComboBox" name="toupcamSoftwareBinningComboBox">
+                          <property name="toolTip">
+                           <string>SDK 数字合并；会改变输出尺寸和采样间距。定量标定默认关闭。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>不合并（1 × 1）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>2 × 2（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>3 × 3（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>4 × 4（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>5 × 5（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>6 × 6（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>7 × 7（平均）</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>8 × 8（平均）</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                        <item row="8" column="0">
+                         <widget class="QLabel" name="toupcamConversionGainComboBoxLabel">
+                          <property name="text">
+                           <string>转换增益</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamConversionGainComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="8" column="1">
+                         <widget class="QComboBox" name="toupcamConversionGainComboBox">
+                          <property name="toolTip">
+                           <string>与第二页的模拟增益不同；连接后仅开放设备支持的模式。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>保持相机当前值</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>LCG · 低转换增益</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>HCG · 高转换增益</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <spacer name="toupcamDeviceSpacer">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                        <property name="sizeType">
+                         <enum>QSizePolicy::Expanding</enum>
+                        </property>
+                        <property name="sizeHint">
+                         <size>
+                          <width>1</width>
+                          <height>1</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="toupcamAcquisitionWidget">
+                     <layout class="QVBoxLayout" name="toupcamAcquisitionLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="toupcamAcquisitionTitleLabel">
+                        <property name="text">
+                         <string>采集与传感器 ROI</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <layout class="QFormLayout" name="toupcamAcquisitionForm">
+                        <property name="fieldGrowthPolicy">
+                         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                        </property>
+                        <property name="labelAlignment">
+                         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                        </property>
+                        <property name="spacing">
+                         <number>10</number>
+                        </property>
+                        <item row="0" column="0">
+                         <widget class="QLabel" name="toupcamTimeoutSpinBoxLabel">
+                          <property name="text">
+                           <string>取帧超时</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamTimeoutSpinBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QSpinBox" name="toupcamTimeoutSpinBox">
+                          <property name="minimum">
+                           <number>1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>60000</number>
+                          </property>
+                          <property name="singleStep">
+                           <number>1</number>
+                          </property>
+                          <property name="value">
+                           <number>1000</number>
+                          </property>
+                          <property name="keyboardTracking">
+                           <bool>false</bool>
+                          </property>
+                          <property name="suffix">
+                           <string> ms</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QLabel" name="toupcamPreviewIntervalSpinBoxLabel">
+                          <property name="text">
+                           <string>预览刷新间隔</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamPreviewIntervalSpinBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QSpinBox" name="toupcamPreviewIntervalSpinBox">
+                          <property name="minimum">
+                           <number>1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>1000</number>
+                          </property>
+                          <property name="singleStep">
+                           <number>1</number>
+                          </property>
+                          <property name="value">
+                           <number>33</number>
+                          </property>
+                          <property name="keyboardTracking">
+                           <bool>false</bool>
+                          </property>
+                          <property name="suffix">
+                           <string> ms</string>
+                          </property>
+                          <property name="toolTip">
+                           <string>仅设置界面读取最新帧的频率，不设置传感器 FPS。连接后切换相机时使用对应预览参数。</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="0">
+                         <widget class="QLabel" name="toupcamAcquisitionModeComboBoxLabel">
+                          <property name="text">
+                           <string>采集方式</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamAcquisitionModeComboBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="2" column="1">
+                         <widget class="QComboBox" name="toupcamAcquisitionModeComboBox">
+                          <property name="toolTip">
+                           <string>采用连续采集；DMD 同步沿用换图、等待稳定后取新帧。外部硬件触发需另行接线和验证。</string>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>连续采集</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                        <item row="3" column="0">
+                         <widget class="QLabel" name="toupcamRoiCheckBoxLabel">
+                          <property name="text">
+                           <string>采集范围</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamRoiCheckBox</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="3" column="1">
+                         <widget class="QCheckBox" name="toupcamRoiCheckBox">
+                          <property name="text">
+                           <string>启用传感器 ROI</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="4" column="0" colspan="2">
+                         <widget class="QWidget" name="toupcamRoiWidget">
+                          <property name="enabled">
+                           <bool>false</bool>
+                          </property>
+                          <layout class="QGridLayout" name="toupcamRoiLayout" columnstretch="0,1,0,1">
+                           <property name="leftMargin">
+                            <number>0</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>0</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>0</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>0</number>
+                           </property>
+                           <item row="0" column="0">
+                            <widget class="QLabel" name="toupcamRoiXLabel">
+                             <property name="text">
+                              <string>X</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QSpinBox" name="toupcamRoiXSpinBox">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>65534</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>2</number>
+                             </property>
+                             <property name="value">
+                              <number>0</number>
+                             </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="suffix">
+                              <string> px</string>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>84</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="2">
+                            <widget class="QLabel" name="toupcamRoiYLabel">
+                             <property name="text">
+                              <string>Y</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="3">
+                            <widget class="QSpinBox" name="toupcamRoiYSpinBox">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>65534</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>2</number>
+                             </property>
+                             <property name="value">
+                              <number>0</number>
+                             </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="suffix">
+                              <string> px</string>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>84</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QLabel" name="toupcamRoiWidthLabel">
+                             <property name="text">
+                              <string>宽</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QSpinBox" name="toupcamRoiWidthSpinBox">
+                             <property name="minimum">
+                              <number>8</number>
+                             </property>
+                             <property name="maximum">
+                              <number>65534</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>2</number>
+                             </property>
+                             <property name="value">
+                              <number>640</number>
+                             </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="suffix">
+                              <string> px</string>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>84</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="2">
+                            <widget class="QLabel" name="toupcamRoiHeightLabel">
+                             <property name="text">
+                              <string>高</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="3">
+                            <widget class="QSpinBox" name="toupcamRoiHeightSpinBox">
+                             <property name="minimum">
+                              <number>8</number>
+                             </property>
+                             <property name="maximum">
+                              <number>65534</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>2</number>
+                             </property>
+                             <property name="value">
+                              <number>640</number>
+                             </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="suffix">
+                              <string> px</string>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>84</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="5" column="0" colspan="2">
+                         <widget class="QLabel" name="toupcamRoiHintLabel">
+                          <property name="text">
+                           <string>ROI 关闭时使用所选模式的完整画幅。SDK 要求 X/Y/宽/高为偶数，宽高至少 8 px；上限连接后按实际模式校验。</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="styleSheet">
+                           <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="6" column="0">
+                         <widget class="QLabel" name="toupcamOutputInfoLabelLabel">
+                          <property name="text">
+                           <string>实际输出</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="buddy">
+                           <cstring>toupcamOutputInfoLabel</cstring>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="6" column="1">
+                         <widget class="QLabel" name="toupcamOutputInfoLabel">
+                          <property name="text">
+                           <string>尺寸 — × — px · 有效位深 — bit
+采集 FPS — · 预览 FPS —</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="styleSheet">
+                           <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="7" column="0" colspan="2">
+                         <widget class="QLabel" name="toupcamPreviewReuseLabel">
+                          <property name="text">
+                           <string>曝光、模拟增益和自动曝光沿用第二页控制。第三页支持 1:1、缩放、平移和原始像素 ROI 标注。</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="styleSheet">
+                           <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="8" column="0" colspan="2">
+                         <widget class="QLabel" name="toupcamBinningHintLabel">
+                          <property name="text">
+                           <string>高位深 PNG 保留采集值；预览按显示范围转换。切换分辨率 / Binning 后需重新核对标定采样间距。</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="styleSheet">
+                           <string>color: #687b92; font-size: 11px; font-weight: normal;</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <spacer name="toupcamAcquisitionSpacer">
+                        <property name="orientation">
+                         <enum>Qt::Vertical</enum>
+                        </property>
+                        <property name="sizeType">
+                         <enum>QSizePolicy::Expanding</enum>
+                        </property>
+                        <property name="sizeHint">
+                         <size>
+                          <width>1</width>
+                          <height>1</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="toupcamReferenceLabel">
+                   <property name="text">
+                    <string>资料参考：IUC26000KMA · IMX571BLR-J · 3.76 μm · 卷帘快门 · USB3.0
+6224 × 4168 @ 14.2 FPS；3104 × 2084 @ 37.1 FPS；2064 × 1388 @ 109.9 FPS。以上为资料标称值，实际能力及帧率以连接设备为准。</string>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -3710,10 +4533,10 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                  <item>
                   <widget class="QLabel" name="ccdTitleLabel">
                    <property name="text">
-                    <string>相机 · M3ST130-H-02C</string>
+                    <string>相机 · 待连接</string>
                    </property>
                    <property name="toolTip">
-                    <string>度申 M3ST130-H-02C：彩色 CMOS，全局快门，USB3.0，标称 1280 × 1024，像元 4.0 μm。连接后显示 SDK 返回的实际型号。</string>
+                    <string>共用相机预览区；连接后显示 SDK 返回的实际型号。当前已接入度申 DVP2，ToupTek 通过独立 SDK 采集单色原始帧。</string>
                    </property>
                   </widget>
                  </item>
@@ -3987,7 +4810,7 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
                          <double>1</double>
                         </property>
                         <property name="maximum">
-                         <double>10000000</double>
+                         <double>4294967295</double>
                         </property>
                         <property name="value">
                          <double>10000</double>
@@ -4202,6 +5025,591 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="ccdDetailPage">
+       <attribute name="title">
+        <string>03  CCD 细节预览</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="ccdDetailPageLayout" stretch="0,0,1,0">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="ccdDetailHeaderLayout">
+          <item>
+           <widget class="QLabel" name="ccdDetailTitleLabel">
+            <property name="text">
+             <string>CCD 细节预览</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ccdDetailStateLabel">
+            <property name="text">
+             <string>● 等待相机画面</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="ccdDetailHeaderSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="ccdDetailBackButton">
+            <property name="text">
+             <string>返回四路总览</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QFrame" name="ccdDetailToolbar">
+          <layout class="QHBoxLayout" name="ccdDetailToolbarLayout">
+           <property name="spacing">
+            <number>6</number>
+           </property>
+           <item>
+            <widget class="QPushButton" name="ccdDetailFitButton">
+             <property name="text">
+              <string>适应窗口</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailActualSizeButton">
+             <property name="text">
+              <string>1:1 像素</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailZoomOutButton">
+             <property name="text">
+              <string>−</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="ccdDetailZoomSpinBox">
+             <property name="decimals">
+              <number>0</number>
+             </property>
+             <property name="minimum">
+              <double>1</double>
+             </property>
+             <property name="maximum">
+              <double>3200</double>
+             </property>
+             <property name="value">
+              <double>100</double>
+             </property>
+             <property name="suffix">
+              <string> %</string>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>100</width>
+               <height>16777215</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailZoomInButton">
+             <property name="text">
+              <string>+</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailPanButton">
+             <property name="text">
+              <string>平移</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <property name="autoExclusive">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailRoiDrawButton">
+             <property name="text">
+              <string>框选 ROI</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="autoExclusive">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="ccdDetailToolbarSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="ccdDetailFreezeButton">
+             <property name="text">
+              <string>冻结画面</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="toolTip">
+              <string>冻结查看当前帧，便于检查细节和标注；后台采集继续。</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSplitter" name="ccdDetailSplitter">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="childrenCollapsible">
+           <bool>false</bool>
+          </property>
+          <property name="handleWidth">
+           <number>10</number>
+          </property>
+          <widget class="QFrame" name="ccdDetailCanvasCard">
+           <property name="minimumSize">
+            <size>
+             <width>480</width>
+             <height>320</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="ccdDetailCanvasLayout" stretch="0,1,0">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <layout class="QHBoxLayout" name="ccdDetailImageInfoLayout">
+              <item>
+               <widget class="QLabel" name="ccdDetailImageSizeLabel">
+                <property name="text">
+                 <string>采集尺寸  — × — px</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="ccdDetailImageInfoSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="ccdDetailFrameLabel">
+                <property name="text">
+                 <string>帧号 —   /   预览 — FPS</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QGraphicsView" name="ccdDetailGraphicsView">
+              <property name="frameShape">
+               <enum>QFrame::NoFrame</enum>
+              </property>
+              <property name="dragMode">
+               <enum>QGraphicsView::ScrollHandDrag</enum>
+              </property>
+              <property name="transformationAnchor">
+               <enum>QGraphicsView::AnchorUnderMouse</enum>
+              </property>
+              <property name="resizeAnchor">
+               <enum>QGraphicsView::AnchorViewCenter</enum>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="verticalScrollBarPolicy">
+               <enum>Qt::ScrollBarAsNeeded</enum>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>240</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="ccdDetailPixelInfoLayout">
+              <item>
+               <widget class="QLabel" name="ccdDetailCursorLabel">
+                <property name="text">
+                 <string>像素坐标  X —   Y —</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="ccdDetailPixelInfoSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="ccdDetailPixelValueLabel">
+                <property name="text">
+                 <string>像素值 —</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QScrollArea" name="ccdDetailSidebarScrollArea">
+           <property name="widgetResizable">
+            <bool>true</bool>
+           </property>
+           <property name="horizontalScrollBarPolicy">
+            <enum>Qt::ScrollBarAlwaysOff</enum>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>280</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>320</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <widget class="QWidget" name="ccdDetailSidebarContents">
+            <layout class="QVBoxLayout" name="ccdDetailSidebarLayout">
+             <property name="spacing">
+              <number>10</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QGroupBox" name="ccdDetailNavigatorGroupBox">
+               <property name="title">
+                <string>全图导航</string>
+               </property>
+               <layout class="QVBoxLayout" name="ccdDetailNavigatorLayout">
+                <property name="spacing">
+                 <number>8</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="ccdDetailNavigatorLabel">
+                  <property name="text">
+                   <string>全图缩略图
+等待相机画面</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>140</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>140</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="ccdDetailNavigatorHintLabel">
+                  <property name="text">
+                   <string>方框表示当前可见区域</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="ccdDetailRoiGroupBox">
+               <property name="title">
+                <string>ROI 标注</string>
+               </property>
+               <layout class="QVBoxLayout" name="ccdDetailRoiLayout">
+                <property name="spacing">
+                 <number>8</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="ccdDetailRoiHintLabel">
+                  <property name="text">
+                   <string>选择“框选 ROI”后拖动绘制；
+拖动矩形或边角可调整位置与大小。</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="ccdDetailRoiNameLayout">
+                  <item>
+                   <widget class="QLabel" name="ccdDetailRoiNameLabel">
+                    <property name="text">
+                     <string>名称</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="ccdDetailRoiNameEdit">
+                    <property name="text">
+                     <string>ROI 01</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QGridLayout" name="ccdDetailRoiGeometryLayout" columnstretch="0,1,0,1">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="ccdDetailRoiXLabel">
+                    <property name="text">
+                     <string>X</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QSpinBox" name="ccdDetailRoiXSpinBox">
+                   <property name="minimumSize"><size><width>74</width><height>0</height></size></property>
+                   <property name="sizePolicy"><sizepolicy hsizetype="Ignored" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+                    <property name="maximum">
+                     <number>2147483647</number>
+                    </property>
+                    <property name="suffix">
+                     <string> px</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="2">
+                   <widget class="QLabel" name="ccdDetailRoiYLabel">
+                    <property name="text">
+                     <string>Y</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="3">
+                   <widget class="QSpinBox" name="ccdDetailRoiYSpinBox">
+                   <property name="minimumSize"><size><width>74</width><height>0</height></size></property>
+                   <property name="sizePolicy"><sizepolicy hsizetype="Ignored" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+                    <property name="maximum">
+                     <number>2147483647</number>
+                    </property>
+                    <property name="suffix">
+                     <string> px</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="ccdDetailRoiWidthLabel">
+                    <property name="text">
+                     <string>宽</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QSpinBox" name="ccdDetailRoiWidthSpinBox">
+                   <property name="minimumSize"><size><width>74</width><height>0</height></size></property>
+                   <property name="sizePolicy"><sizepolicy hsizetype="Ignored" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+                    <property name="maximum">
+                     <number>2147483647</number>
+                    </property>
+                    <property name="suffix">
+                     <string> px</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="2">
+                   <widget class="QLabel" name="ccdDetailRoiHeightLabel">
+                    <property name="text">
+                     <string>高</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="3">
+                   <widget class="QSpinBox" name="ccdDetailRoiHeightSpinBox">
+                   <property name="minimumSize"><size><width>74</width><height>0</height></size></property>
+                   <property name="sizePolicy"><sizepolicy hsizetype="Ignored" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+                    <property name="maximum">
+                     <number>2147483647</number>
+                    </property>
+                    <property name="suffix">
+                     <string> px</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QLabel" name="ccdDetailRoiCoordinatesLabel">
+                  <property name="text">
+                   <string>原始采集图像坐标 · 左上角为原点</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="ccdDetailRoiActionsLayout">
+                  <item>
+                   <widget class="QPushButton" name="ccdDetailRoiApplyButton">
+                    <property name="text">
+                     <string>确认 ROI</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="ccdDetailRoiClearButton">
+                    <property name="text">
+                     <string>清除 ROI</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ccdDetailShowRoiCheckBox">
+                  <property name="text">
+                   <string>显示 ROI 边框</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="ccdDetailRoiScopeLabel">
+                  <property name="text">
+                   <string>标注区域不改变相机采集范围。</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="ccdDetailRoiFilesLayout">
+               <item>
+                <widget class="QPushButton" name="ccdDetailRoiLoadButton">
+                 <property name="text">
+                  <string>载入标注…</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="ccdDetailRoiSaveButton">
+                 <property name="text">
+                  <string>保存标注…</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="ccdDetailAutoOpenCheckBox">
+               <property name="text">
+                <string>第二页选 1:1 时打开此页</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="ccdDetailSidebarSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint">
+                <size>
+                 <width>20</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ccdDetailInteractionHintLabel">
+          <property name="text">
+           <string>滚轮：缩放  ·  平移模式：拖动画面  ·  框选模式：绘制 ROI  ·  1:1：一个图像像素对应一个显示像素</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -4273,6 +5681,12 @@ QWidget#dmdControlsWidget QSpinBox, QWidget#slm1ControlsWidget QSpinBox, QWidget
      <y>20</y>
     </hint>
    </hints>
+  </connection>
+  <connection>
+   <sender>toupcamRoiCheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>toupcamRoiWidget</receiver>
+   <slot>setEnabled(bool)</slot>
   </connection>
  </connections>
 </ui>
