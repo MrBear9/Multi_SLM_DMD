@@ -24,6 +24,14 @@ from tools.calibration.runner import CalibrationRunner
 from tools.utils.image_transforms import ImageTransform
 
 
+def empirical_config(**overrides):
+    """Previously saved numerical parameters remain supported unchanged."""
+    values = dict(slm1_grid_size=512, slm2_grid_size=1024,
+                  slm1_sampling_um=13, slm2_sampling_um=6.4)
+    values.update(overrides)
+    return CalibrationConfig(**values)
+
+
 class CalibrationTests(unittest.TestCase):
     def test_raw_batch_rejects_old_duplicate_and_discarded_frames(self):
         batch = FrameBatch(10, 20, 2, 1)
@@ -131,9 +139,11 @@ class GridTests(unittest.TestCase):
         config = CalibrationConfig().validate()
         for index, key in enumerate(('slm1', 'slm2'), 1):
             profile = SLM_PROFILES[DEFAULT_SLM_LAYER_PROFILES[index]]
-            self.assertAlmostEqual(config.sampling_um_for(key), profile['effective_sampling_pitch'] * 1e6)
+            self.assertAlmostEqual(config.sampling_um_for(key), profile['hardware_pixel_pitch'] * 1e6)
             self.assertAlmostEqual(getattr(config, key + '_pitch_um'), profile['hardware_pixel_pitch'] * 1e6)
-        self.assertEqual((config.slm1_sampling_um, config.slm2_sampling_um), (13, 6.4))
+        self.assertEqual((config.slm1_sampling_um, config.slm2_sampling_um), (8, 4.5))
+        self.assertEqual((config.slm1_grid_size, config.slm2_grid_size), (704, 1152))
+        self.assertEqual(config, CalibrationConfig(slm1_grid_size=432, slm2_grid_size=768).fit_grids())
         self.assertEqual((config.slm1_pitch_um, config.slm2_pitch_um), (8, 4.5))
         self.assertEqual(config.slm_shape('slm1'), (432, 432))
         self.assertEqual(config.slm_shape('slm2'), (768, 768))
@@ -149,35 +159,43 @@ class GridTests(unittest.TestCase):
             replace(config, slm2_grid_size=2048).validate()
 
     def test_finer_sampling_grows_only_insufficient_grids(self):
-        original = CalibrationConfig(slm1_sampling_um=11)
+        original = CalibrationConfig(slm1_sampling_um=7)
+        fitted = original.fit_grids()
+        self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (768, 1152))
+        self.assertEqual(original.slm1_grid_size, 704)
+        self.assertEqual(fitted.slm1_sampling_um, 7)
+        self.assertEqual(fitted.fit_grids(), fitted)
+
+    def test_old_sampling_parameters_still_expand_when_needed(self):
+        original = empirical_config(slm1_sampling_um=11)
         fitted = original.fit_grids()
         self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (640, 1024))
         self.assertEqual(original.slm1_grid_size, 512)
         self.assertEqual(fitted.slm1_sampling_um, 11)
         self.assertEqual(fitted.fit_grids(), fitted)
-        fitted = CalibrationConfig(slm2_sampling_um=4.5).fit_grids()
+        fitted = empirical_config(slm2_sampling_um=4.5).fit_grids()
         self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (512, 1152))
 
     def test_larger_second_grid_grows_first_grid(self):
         fitted = CalibrationConfig(slm2_grid_size=2048).fit_grids()
-        self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (1024, 2048))
+        self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (1152, 2048))
 
     def test_sufficient_manual_sizes_are_preserved_without_rounding(self):
-        for config in (CalibrationConfig(slm1_grid_size=777, slm2_grid_size=1536),
+        for config in (CalibrationConfig(slm1_grid_size=961, slm2_grid_size=1536),
                        CalibrationConfig(slm1_grid_size=596, slm1_sampling_um=11)):
             with self.subTest(config=config):
                 self.assertEqual(config.fit_grids(), config)
 
     def test_larger_aperture_grows_both_grids(self):
         fitted = CalibrationConfig(dmd_width=1280, dmd_height=720).fit_grids()
-        self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (832, 1664))
+        self.assertEqual((fitted.slm1_grid_size, fitted.slm2_grid_size), (1344, 2304))
         fitted.validate()
 
     def test_impossible_grid_does_not_partially_adjust_parameters(self):
         original = CalibrationConfig(slm1_sampling_um=.1, slm2_sampling_um=4.5)
         with self.assertRaisesRegex(ValueError, 'SLM1.*51840.*4096'):
             original.fit_grids()
-        self.assertEqual((original.slm1_grid_size, original.slm2_grid_size), (512, 1024))
+        self.assertEqual((original.slm1_grid_size, original.slm2_grid_size), (704, 1152))
         with self.assertRaisesRegex(ValueError, '必须为有限正数'):
             CalibrationConfig(slm1_sampling_um=float('nan')).fit_grids()
 
@@ -206,7 +224,7 @@ class GridTests(unittest.TestCase):
     def test_camera_mapping_preserves_positions_across_output_grid_choices(self):
         geometry = {'matrix': [[-.8, .2, 500], [.1, -.9, 600]]}
         configs = [CalibrationConfig(), replace(CalibrationConfig(), slm1_grid_size=768),
-                   replace(CalibrationConfig(), slm2_grid_size=2048, slm2_sampling_um=3.2)]
+                   replace(CalibrationConfig(), slm1_grid_size=832, slm2_grid_size=2048, slm2_sampling_um=3.2)]
         position_um = np.array([140., -270.])
         mapped = []
         for config in configs:
@@ -545,13 +563,13 @@ class GuiTests(unittest.TestCase):
             dialog = window.calibration.dialog
             self.assertIn('432×432', dialog.grid_summary.text())
             self.assertIn('768×768', dialog.grid_summary.text())
-            dialog.controls['slm1_grid_size'].setValue(640)
             dialog.controls['slm1_sampling_um'].setValue(12)
+            dialog.controls['slm1_grid_size'].setValue(640)
             dialog.controls['slm2_phase_resolution'].setValue(64)
             config = dialog.values()
             self.assertEqual(config.slm1_grid_size, 640)
             self.assertEqual(config.slm1_sampling_um, 12)
-            self.assertEqual(config.slm2_sampling_um, 6.4)
+            self.assertEqual(config.slm2_sampling_um, 4.5)
             self.assertEqual(config.slm1_phase_resolution, 128)
             self.assertEqual(config.slm2_phase_resolution, 64)
             dialog.controls['dmd_width'].setValue(320)
@@ -559,7 +577,7 @@ class GuiTests(unittest.TestCase):
             self.assertIn('384×768', dialog.grid_summary.text())
             dialog.controls['slm2_grid_size'].setValue(2048)
             config = dialog.values()
-            self.assertEqual((config.slm1_grid_size, config.slm2_grid_size), (1152, 2048))
+            self.assertEqual((config.slm1_grid_size, config.slm2_grid_size), (768, 2048))
             self.assertNotIn('待调整', dialog.grid_summary.text())
             dialog.defaults_button.click()
             self.assertEqual(dialog.values(), CalibrationConfig())
@@ -575,6 +593,7 @@ class GuiTests(unittest.TestCase):
         try:
             window.calibration.open()
             dialog = window.calibration.dialog
+            dialog.apply_config(empirical_config())
             dialog.controls['slm1_sampling_um'].setValue(11)
             grid = dialog.controls['slm1_grid_size']
             self.assertEqual(grid.value(), 640)
@@ -607,6 +626,7 @@ class GuiTests(unittest.TestCase):
         try:
             window.calibration.open()
             dialog = window.calibration.dialog
+            dialog.apply_config(empirical_config())
             dialog.controls['slm1_sampling_um'].setValue(.1)
             self.assertIn('4096', dialog.grid_summary.text())
             self.assertIn('待调整', dialog.grid_summary.text())
@@ -628,7 +648,7 @@ class GuiTests(unittest.TestCase):
             dialog = window.calibration.dialog
             with tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / 'input.json'
-                write_json(path, CalibrationConfig(slm1_sampling_um=11).to_dict())
+                write_json(path, empirical_config(slm1_sampling_um=11).to_dict())
                 # Reading a saved bundle/config remains strict unless the
                 # development UI explicitly requests automatic adjustment.
                 with self.assertRaisesRegex(ValueError, '覆盖 SLM2'):
@@ -662,8 +682,8 @@ class GuiTests(unittest.TestCase):
                 self.assertEqual(dialog.values().phase_shape(key), (640, 640))
             self.assertIn('SLM1 640×640 → 432×432', dialog.grid_summary.text())
             self.assertIn('SLM2 640×640 → 768×768', dialog.grid_summary.text())
-            self.assertEqual(dialog.values().slm1_grid_size, 512)
-            self.assertEqual(dialog.values().slm2_grid_size, 1024)
+            self.assertEqual(dialog.values().slm1_grid_size, 704)
+            self.assertEqual(dialog.values().slm2_grid_size, 1152)
         finally:
             window.calibration.dialog.close()
             window.close()

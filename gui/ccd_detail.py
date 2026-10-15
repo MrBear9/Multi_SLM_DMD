@@ -261,6 +261,8 @@ class CcdDetailController(QtCore.QObject):
             self.view.cancel_edit()
             self.present_latest()
         self.update_status()
+        if hasattr(self.window, 'capture_export'):
+            self.window.capture_export.update_actions()
 
     def update_status(self):
         if self.displayed is None:

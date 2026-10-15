@@ -31,6 +31,7 @@ from .calibration_controller import CalibrationController
 from .ccd_detail import CcdDetailController
 from .toupcam_controls import ToupControls
 from .live_inputs import LiveInputs
+from .capture_export import CaptureExport
 from ..utils.camera_settings import selected_camera, camera_value
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
@@ -132,6 +133,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize_timer.setSingleShot(True)
         self.resize_timer.timeout.connect(self.refresh_all_previews)
         self.ccd_detail = CcdDetailController(self)
+        self.capture_export = CaptureExport(self)
         self.toupcam = ToupControls(self)
         self.mainTabWidget.currentChanged.connect(lambda _: self.refresh_preview('ccd'))
         if demo:
@@ -1029,7 +1031,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera.submit('parameters', self.ccdExposureSpinBox.value(), self.ccdGainSpinBox.value(),
                            self.ccdAutoExposureCheckBox.isChecked())
 
-    def queue_capture(self, filename, automatic=False, source='dmd'):
+    def queue_capture(self, filename, automatic=False, source='dmd', *, destination=None, overwrite=None):
         if not self.camera_ready:
             raise ValueError('CCD 尚未就绪。')
         slm_capture = automatic and source in ('slm1', 'slm2')
@@ -1062,8 +1064,10 @@ class MainWindow(QtWidgets.QMainWindow):
                             source_file=str(self.paths[source][self.indices[source]]),
                             discard_after_settle=1,
                             settle_seconds=self.slmCaptureSettleSpinBox.value())
-        request = CaptureRequest(input_path(settings['outputDirectoryEdit']) / filename, after,
-                                 settings['overwriteCheckBox'], settings['saveManifestCheckBox'], metadata, deadline)
+        output = input_path(settings['outputDirectoryEdit']) / filename if destination is None else Path(destination)
+        request = CaptureRequest(output, after,
+                                 settings['overwriteCheckBox'] if overwrite is None else overwrite,
+                                 settings['saveManifestCheckBox'], metadata, deadline)
         if slm_capture:
             if request.path.resolve() in {path.resolve() for paths in self.paths.values() for path in paths}:
                 raise ValueError('采集文件与输入图像路径相同，请更换保存目录，避免覆盖相位图。')
@@ -1246,8 +1250,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inputs.update_actions()
         if hasattr(self, 'ccd_detail'):
             self.ccd_detail.update_capture_actions()
+        if hasattr(self, 'capture_export'):
+            self.capture_export.update_actions()
 
     def closeEvent(self, event):
+        if self.capture_export.job is not None:
+            self.closing = True
+            self.statusBar().showMessage('正在完成冻结帧保存，完成后关闭。')
+            event.ignore()
+            return
         if self.calibration.active:
             self.closing = True
             self.calibration.disconnect_after = True

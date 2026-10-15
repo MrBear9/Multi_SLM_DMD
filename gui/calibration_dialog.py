@@ -97,7 +97,7 @@ class CalibrationDialog(QtWidgets.QDialog):
             self.controls[key] = control
             labels[key] = label
             if key.endswith('_sampling_um'):
-                control.setToolTip('用于 ASM 传播的数值采样。修改后自动扩展不足的网格；器件物理像素间距单独设置。')
+                control.setToolTip('默认与对应硬件像素间距一致，可手动调整。修改后自动扩展不足的网格；器件物理像素间距单独设置。')
             elif key.endswith('_grid_size'):
                 control.setToolTip('包含周边计算区域的数值网格。范围不足时自动增大；已足够大的手动值会保留。')
             elif key.endswith('_phase_resolution'):
@@ -231,14 +231,18 @@ class CalibrationDialog(QtWidgets.QDialog):
     def refresh_grid_summary(self, *_):
         config = self.values(validate=False)
         hardware, grids, phase = [], [], []
+        hardware.append(
+            f'DMD {config.dmd_width}×{config.dmd_height} / {config.dmd_pitch_um:g} μm / '
+            f'{config.dmd_width * config.dmd_pitch_um / 1000:.3f}×{config.dmd_height * config.dmd_pitch_um / 1000:.3f} mm')
         for key in ('slm1', 'slm2'):
             h, w = config.slm_shape(key)
-            hardware.append(f'{key.upper()} {w}×{h}（{getattr(config, key + "_pitch_um"):g} μm）')
+            pitch = getattr(config, key + '_pitch_um')
+            hardware.append(f'{key.upper()} {w}×{h} / {pitch:g} μm / {w * pitch / 1000:.3f}×{h * pitch / 1000:.3f} mm')
             n = config.grid_size_for(key)
             grids.append(f'{key.upper()} {n}×{n} / {config.sampling_um_for(key):g} μm / {config.grid_extent_um(key) / 1000:.3f} mm')
             ph, pw = config.phase_shape(key)
             phase.append(f'{key.upper()} {pw}×{ph} → {w}×{h}')
-        summary = ('硬件相位图：' + '；'.join(hardware) + '\n'
+        summary = ('硬件有效区 / 像素间距 / 物理尺寸：' + '；'.join(hardware) + '\n'
                    + 'ASM 网格 / 采样 / 视野：' + '；'.join(grids) + '\n'
                    + '相位控制点 → 导出尺寸：' + '；'.join(phase))
         if self.source_combo.currentData() == 'development':
@@ -324,7 +328,11 @@ class CalibrationDialog(QtWidgets.QDialog):
         self.controller.bundle_path = None
         self.bundle_path_edit.clear()
         self.apply_config(CalibrationConfig())
-        self.log.appendPlainText('已恢复分层默认：SLM1 512×512 / 13 μm；SLM2 1024×1024 / 6.4 μm。改变传播参数后需重新训练。')
+        config = self.values(validate=False)
+        self.log.appendPlainText(
+            f'已恢复硬件采样默认：SLM1 {config.slm1_grid_size}×{config.slm1_grid_size} / {config.slm1_sampling_um:g} μm；'
+            f'SLM2 {config.slm2_grid_size}×{config.slm2_grid_size} / {config.slm2_sampling_um:g} μm。'
+            '网格含外围计算区域；改变传播参数后需重新训练。')
 
     def start(self, training_only):
         try:

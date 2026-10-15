@@ -18,15 +18,17 @@ class CalibrationConfig:
     dmd_width: int = 640
     dmd_height: int = 640
     dmd_pitch_um: float = 5.4
-    # Mirrors models/SLM/physical_defaults.py, checked by the development tests.
+    # Hardware pitches mirror models/SLM/physical_defaults.py.
     # The hardware app must remain independent of the models/training package.
     slm1_pitch_um: float = 8.0
     slm2_pitch_um: float = 4.5
     camera_pitch_um: float = 4.0
-    slm1_grid_size: int = 512
-    slm2_grid_size: int = 1024
-    slm1_sampling_um: float = 13.0
-    slm2_sampling_um: float = 6.4
+    # Native-pixel sampling with padding for the default illuminated aperture.
+    # fit_grids() still grows insufficient grids and preserves larger manual ones.
+    slm1_grid_size: int = 704
+    slm2_grid_size: int = 1152
+    slm1_sampling_um: float = 8.0
+    slm2_sampling_um: float = 4.5
     slm1_phase_resolution: int = 128
     slm2_phase_resolution: int = 128
     steps: int = 400
@@ -173,7 +175,7 @@ class CalibrationConfig:
             migrated.append(old)
         if migrated:
             message = ('载入了旧版公共网格参数，已按原值分别填入 SLM1/SLM2，未改成新默认值。'
-                       '若要采用 13 μm / 6.4 μm 分层默认参数，请选择“恢复默认”并重新训练。')
+                       '若要采用与硬件像素间距一致的 8 μm / 4.5 μm 默认采样，请选择“恢复默认”并重新训练。')
             if on_migration:
                 on_migration(message)
             else:
