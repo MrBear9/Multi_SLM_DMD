@@ -9,7 +9,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from ..utils.image_transforms import ImageTransform
 from ..utils.camera_settings import camera_roi
-from .configuration import camera_qimage
+from .configuration import camera_qimage, input_path
 from .ccd_detail_view import CcdDetailView, FrameNavigator
 
 
@@ -95,10 +95,74 @@ class CcdDetailController(QtCore.QObject):
             field.editingFinished.connect(self.fields_edited)
         w.ccdDetailRoiLoadButton.clicked.connect(self.load_dialog)
         w.ccdDetailRoiSaveButton.clicked.connect(self.save_dialog)
+        w.ccdDetailCaptureButton.clicked.connect(lambda: w.guard(w.capture_manual))
+        w.ccdDetailRecordButton.clicked.connect(lambda: w.guard(w.toggle_recording))
+        w.ccdDetailOutputBrowseButton.clicked.connect(self.choose_output_directory)
+        w.ccdDetailOutputDirectoryEdit.editingFinished.connect(self.edit_output_directory)
+        w.outputDirectoryEdit.textChanged.connect(self.sync_output_directory)
+        self.sync_output_directory(w.outputDirectoryEdit.text())
+        self.update_capture_actions()
         w.ccdDetailSplitter.setSizes([1000, 310])
         self.screen_handle = None
         w.installEventFilter(self)
         self.update_actions()
+
+    def sync_output_directory(self, text):
+        field = self.window.ccdDetailOutputDirectoryEdit
+        field.setText(text)
+        try:
+            field.setToolTip(str(input_path(text)) + '\n可直接输入目录，按回车或离开输入框后应用。')
+        except ValueError:
+            field.setToolTip(text)
+
+    def choose_output_directory(self):
+        w = self.window
+        if w.calibration.active or w.disconnecting or w.device_task is not None:
+            return
+        text = w.outputDirectoryEdit.text()
+        initial = str(input_path(text)) if text.strip() else ''
+        path = QtWidgets.QFileDialog.getExistingDirectory(w, '选择 CCD 保存目录', initial)
+        if not path:
+            return
+        self.set_output_directory(path)
+
+    def edit_output_directory(self):
+        self.set_output_directory(self.window.ccdDetailOutputDirectoryEdit.text())
+
+    def set_output_directory(self, text):
+        w = self.window
+        previous = w.outputDirectoryEdit.text()
+        if w.calibration.active or w.disconnecting or w.device_task is not None:
+            self.sync_output_directory(previous)
+            return
+        text = text.strip()
+        if text == previous:
+            self.sync_output_directory(previous)
+            return
+        try:
+            directory = input_path(text)
+            directory.mkdir(parents=True, exist_ok=True)
+        except (ValueError, OSError) as exc:
+            # Restore before the dialog takes focus, to avoid another failed commit.
+            self.sync_output_directory(previous)
+            QtWidgets.QMessageBox.warning(w, '保存目录无效', f'未更改保存目录：{exc}')
+            return
+        w.outputDirectoryEdit.setText(text)
+        if w.settings is not None:
+            # Queued captures already own their paths; an active recorder owns its file.
+            w.settings['outputDirectoryEdit'] = text
+        w.statusBar().showMessage('保存目录已更新；后续采集和新录像使用此目录。', 6000)
+
+    def update_capture_actions(self):
+        w = self.window
+        w.ccdDetailCaptureButton.setEnabled(w.ccdCaptureButton.isEnabled())
+        w.ccdDetailRecordButton.setEnabled(w.ccdRecordButton.isEnabled())
+        w.ccdDetailRecordButton.setText(w.ccdRecordButton.text())
+        w.ccdDetailOutputBrowseButton.setEnabled(
+            not (w.calibration.active or w.disconnecting or w.device_task is not None))
+        w.ccdDetailOutputDirectoryEdit.setEnabled(w.ccdDetailOutputBrowseButton.isEnabled())
+        suffix = ' · 录像处理中' if w.recording_pending else (' · 正在录像' if w.recording else '')
+        w.ccdDetailSaveStatusLabel.setText(f'已保存 {w.saved_frames} 帧' + suffix)
 
     def eventFilter(self, watched, event):
         # Qt can deliver destruction events after Python has cleared the

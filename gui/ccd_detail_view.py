@@ -215,14 +215,14 @@ class CcdDetailView(QtWidgets.QGraphicsView):
     def drawForeground(self, painter, rect):
         if self.roi is None or not self.show_roi:
             return
-        pen = QtGui.QPen(QtGui.QColor('#48d9dc'), 2)
+        pen = QtGui.QPen(QtGui.QColor('#ff3b30'), 2)
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.setBrush(QtCore.Qt.NoBrush)
         painter.drawRect(QtCore.QRectF(self.roi))
         scale = math.hypot(self.transform().m11(), self.transform().m12())
         radius = 3.5 / max(scale, 1e-8)
-        painter.setBrush(QtGui.QColor('#48d9dc'))
+        painter.setBrush(QtGui.QColor('#ff3b30'))
         for x, y in self._handles().values():
             painter.drawRect(QtCore.QRectF(x-radius, y-radius, radius*2, radius*2))
         painter.save()

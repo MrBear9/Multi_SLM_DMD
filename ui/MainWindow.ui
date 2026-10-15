@@ -5449,6 +5449,56 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
               </widget>
              </item>
              <item>
+              <widget class="QGroupBox" name="ccdDetailCaptureGroupBox">
+               <property name="title"><string>采集与保存</string></property>
+               <property name="toolTip"><string>保存新采集的完整画面；冻结仅影响预览。目录与参数页共用，当前录像仍写入原文件。</string></property>
+               <layout class="QVBoxLayout" name="ccdDetailCaptureLayout">
+                <item>
+                 <widget class="QLabel" name="ccdDetailOutputDirectoryLabel">
+                  <property name="text"><string>保存目录</string></property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="ccdDetailOutputDirectoryLayout">
+                  <item>
+                   <widget class="QLineEdit" name="ccdDetailOutputDirectoryEdit">
+                    <property name="placeholderText"><string>输入或选择保存目录</string></property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="ccdDetailOutputBrowseButton">
+                    <property name="text"><string>浏览…</string></property>
+                    <property name="toolTip"><string>目录与参数页共用。新目录用于后续采集和新录像，当前录像仍写入原文件。</string></property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="ccdDetailCaptureButtonsLayout">
+                  <item>
+                   <widget class="QPushButton" name="ccdDetailCaptureButton">
+                    <property name="text"><string>保存单帧</string></property>
+                    <property name="toolTip"><string>采集并保存新的完整图像，不保存屏幕截图或冻结的预览帧。</string></property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="ccdDetailRecordButton">
+                    <property name="text"><string>开始录像</string></property>
+                    <property name="toolTip"><string>录制实时完整画面，冻结预览不影响录像。更换保存目录后，当前录像仍写入原文件。</string></property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QLabel" name="ccdDetailSaveStatusLabel">
+                  <property name="text"><string>已保存 0 帧</string></property>
+                  <property name="wordWrap"><bool>true</bool></property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
               <widget class="QGroupBox" name="ccdDetailRoiGroupBox">
                <property name="title">
                 <string>ROI 标注</string>

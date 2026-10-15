@@ -1087,7 +1087,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_recording(self, active, path):
         self.recording, self.recording_pending = active, False
-        self.ccdRecordButton.setText('停止录像' if active else '开始录像')
         if path:
             self.statusBar().showMessage(('正在录像：' if active else '录像已保存：') + path)
         self.update_actions()
@@ -1095,6 +1094,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_capture(self, path):
         self.saved_frames += 1
         self.ccdFramesReceivedLabel.setText(f'已保存 {self.saved_frames} 帧')
+        self.ccd_detail.update_capture_actions()
         self.statusBar().showMessage('已保存：' + path)
 
     def reset_preview_fps(self):
@@ -1223,6 +1223,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdApplyParametersButton.setEnabled(self.camera_ready and not slm_running and not self.disconnecting and not transferring)
         self.ccdCaptureButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.disconnecting and not transferring)
         self.ccdRecordButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.recording_pending and not self.disconnecting and not transferring)
+        self.ccdRecordButton.setText('正在处理…' if self.recording_pending else ('停止录像' if self.recording else '开始录像'))
         self.dmdIntervalSpinBox.setEnabled(not self.timers['dmd'].isActive())
         can_upload = network is not None and (network.demo or (network.controller is not None and network.controller.connected))
         self.dmdUploadButton.setEnabled(can_upload and not transferring and not self.disconnecting and not running)
@@ -1243,6 +1244,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 control.setEnabled(False)
             self.stopAllButton.setEnabled(True)
         self.inputs.update_actions()
+        if hasattr(self, 'ccd_detail'):
+            self.ccd_detail.update_capture_actions()
 
     def closeEvent(self, event):
         if self.calibration.active:
