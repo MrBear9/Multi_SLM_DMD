@@ -106,7 +106,7 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, default=Path('output/calibration_training'))
     parser.add_argument('--write-default-config', type=Path)
     args = parser.parse_args(argv)
-    config = CalibrationConfig.read(args.config) if args.config else CalibrationConfig()
+    config = CalibrationConfig.read(args.config) if args.config else CalibrationConfig.defaults()
     if args.write_default_config:
         write_json(args.write_default_config, config.to_dict())
         return 0

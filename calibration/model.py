@@ -52,7 +52,8 @@ class CalibrationModel(nn.Module):
             grid = torch.stack((xx / (w * pitch / 2), yy / (h * pitch / 2)), -1)
             self.register_buffer(key + '_grid', grid[None])
         self.propagators = nn.ModuleList([
-            ASMPropagation(SimpleNamespace(), distance=distance / 1000,
+            ASMPropagation(SimpleNamespace(ASM_PADDING_FACTOR=config.asm_padding_factor,
+                                           ASM_SUPERSAMPLE_FACTOR=config.asm_supersample_factor), distance=distance / 1000,
                 wavelength=config.wavelength_nm * 1e-9, pixel_size=config.sampling_um_for(key) * 1e-6,
                 resolution=(config.grid_size_for(key),) * 2)
             for key, distance in (('slm1', config.slm1_to_slm2_mm), ('slm2', config.slm2_to_camera_mm))])

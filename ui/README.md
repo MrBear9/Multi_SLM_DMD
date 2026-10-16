@@ -76,7 +76,7 @@ python -m pip check
 python .\apps\optical_control.py --demo
 ```
 
-`tk` 为部分 DMD 命令行工具提供 Tkinter/Tcl/Tk；Qt 主界面使用 PyQt5。Tkinter、ctypes、msvcrt、unittest 等随 Python/其运行环境提供，不应作为同名 pip 包加入清单。自动标定在打包版中导入预先训练好的相位包，无需 PyTorch。仅本地开发训练额外安装 `calibration/requirements.txt`。SciPy、PyYAML 和 pywin32 不因主项目训练而自动成为此界面的依赖。
+`tk` 为部分 DMD 命令行工具提供 Tkinter/Tcl/Tk；Qt 主界面使用 PyQt5。Tkinter、ctypes、msvcrt、unittest、json 等随 Python/其运行环境提供，不应作为同名 pip 包加入清单。自动标定在打包版中导入预先训练好的相位包，无需 PyTorch。仅本地开发训练额外安装 `calibration/requirements.txt`。硬件配置使用子项目 JSON，不引入 PyYAML；SciPy 和 pywin32 也不因此成为依赖。
 
 ### 在 tools 目录打包 GUI
 
@@ -92,7 +92,7 @@ spec 根据自身目录定位入口、项目根目录和资源，不依赖启动
 .\dist\Qing\Qing.exe --demo
 ```
 
-发布时携带整个 `dist/Qing` 文件夹。后续打包配置统一维护在 `Qing.spec` 中。真实硬件连接时，在参数页为外置 SDK/DLL 选择绝对路径，并将输出目录设置到可写的固定位置。完整标定训练目录另行复制，通过“导入相位包…”选择 `manifest.json`，详见 [标定包训练与使用](../calibration/README.md)。
+发布时携带整个 `dist/Qing` 文件夹。打包配置统一维护在 `Qing.spec` 中，仅新增子项目自己的 `calibration_config.json` 数据文件，发布后位于 `lib/tools/calibration_config.json`，可独立修改。GUI 源码运行和打包不需要主项目 YAML 或额外解析文件，spec 明确排除 yaml、models、PyTorch 与开发训练模块。已有 EXE 不会随源码修改自动更新，需要重新打包。真实硬件连接时，在参数页为外置 SDK/DLL 选择绝对路径，并将输出目录设置到可写的固定位置。完整标定训练目录另行复制，通过“导入相位包…”选择 `manifest.json`，详见 [标定包训练与使用](../calibration/README.md)。
 
 自行配置打包时需要保留这些资源和路径（下面的源码位置按项目根目录描述）：
 

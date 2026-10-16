@@ -10,6 +10,8 @@
 - DMD → SLM1：等焦距、等倍率的倒像 4f 中继。
 - SLM1 → SLM2、SLM2 → 相机：两段自由空间 ASM；中间有额外透镜时需要先扩展模型。
 - ASM 复用主项目 `models/SLM/asm_propagation.py`；相位由 `torch.optim.SGD` 优化。
+- 新建/恢复默认从硬件子项目自己的 `calibration_config.json` 读取参数，只使用标准库 json。GUI 不导入主项目 YAML、PyYAML、PyTorch 或 `models`。
+- 默认采样 8 / 4.5 μm，P=2、K=1；标定基础网格仍为 704 / 1152，FFT 边长为网格边长乘 P×K。不同网格保留照明外围区域及层间物理坐标重采样，不强行改成训练模型的 640×640 画布。
 - SLM1/SLM2 分别设置数值网格、采样间距和相位优化控制点；层间按坐标重采样复光场。
 - 开发环境训练并导出标定包；GUI/EXE 可导入包完成相机反馈对准，运行时不依赖 PyTorch 或主项目 `models`。
 - 每片 SLM 单独工作和双 SLM 联合工作各训练四个目标，共十二组。联合目标的两片相位一起优化。
@@ -74,6 +76,10 @@ python -m tools.calibration.train --config tools/calibration_config.json --outpu
 ```
 
 输出目录必须不存在，避免覆盖已有训练结果。参数中 `device` 可设 `auto` / `cuda` / `cpu`。每片 SLM 可提供一个含 256 个 rad 值的文本 LUT（路径分别为 `slm1_lut`、`slm2_lut`）；未提供时采用显式记录的理想线性相位映射，默认灰度方向反向。LUT 路径相对于参数 JSON 文件解析。
+
+`--write-default-config` 未指定 `--config` 时从子项目默认 JSON 生成快照。显式载入 JSON/标定包则始终使用保存值，旧文件缺少 P/K 时按原实现 P=2、K=1 解释；不会因为默认配置更新就改变旧参考图对应的光学参数。新包保存 `asm_padding_factor` / `asm_supersample_factor`，导入后锁定并校验。界面“恢复默认”重新读取子项目的 `calibration_config.json`，仅用于新训练，不读取主项目配置或 `SLM_OPTICS_CONFIG` 环境变量。
+
+相机、搜索参数和逐器件 LUT 同样保存在子项目 JSON。标定 LUT 直接表示灰度 0～255 的器件实测相位；不会自动套用主项目导出参数，避免改变旧标定包的灰度物理含义。
 
 默认训练三种组合各四个目标，共 12 组。把整个输出目录复制到设备电脑，在 GUI 中选择其中的 `manifest.json`。不要只复制 SLM PNG：相位图本身不包含自动对准所需的预测强度、坐标尺度和训练参数。普通相位图仍可通过主界面的 SLM 输入路径播放。
 

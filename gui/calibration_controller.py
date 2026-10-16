@@ -94,7 +94,7 @@ class CalibrationController(QtCore.QObject):
     def __init__(self, window):
         super().__init__(window)
         self.window = window
-        self.config = CalibrationConfig()
+        self.config = CalibrationConfig.defaults()
         self.output = Path.cwd() / 'output' / 'calibration'
         self.dialog = self.task = None
         self.pending = None

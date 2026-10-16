@@ -59,6 +59,7 @@ a = Analysis(
     binaries=hardware_binaries,
     datas=[
         (str(tools_dir / 'ui' / 'MainWindow.ui'), 'tools/ui'),
+        (str(tools_dir / 'calibration_config.json'), 'tools'),
         # Runtime Qt window/taskbar icon; EXE icon alone does not set this.
         (str(icon_file), 'tools/ui'),
     ],
@@ -72,6 +73,7 @@ a = Analysis(
         'torchvision',
         'torchaudio',
         'models',
+        'yaml',
         'tools.calibration.train',
         'tools.calibration.model',
         'tools.calibration.resampling',

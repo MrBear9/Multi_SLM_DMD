@@ -18,6 +18,7 @@ MODEL_FIELDS = (
     'wavelength_nm', 'slm1_to_slm2_mm', 'slm2_to_camera_mm',
     'dmd_width', 'dmd_height', 'dmd_pitch_um', 'slm1_pitch_um', 'slm2_pitch_um',
     'slm1_grid_size', 'slm2_grid_size', 'slm1_sampling_um', 'slm2_sampling_um',
+    'asm_padding_factor', 'asm_supersample_factor',
     'slm1_phase_resolution', 'slm2_phase_resolution', 'gray_inverted',
     'dmd_rotation', 'dmd_horizontal_flip', 'target_x_um', 'target_y_um',
     'slm1_lut', 'slm2_lut',

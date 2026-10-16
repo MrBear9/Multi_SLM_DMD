@@ -72,6 +72,8 @@ class CalibrationDialog(QtWidgets.QDialog):
             ('slm2_grid_size', 'SLM2 · ASM 网格边长', 32, MAX_GRID_SIZE, 0),
             ('slm2_sampling_um', 'SLM2 · 数值采样 / μm', .1, 100, 3),
             ('slm2_phase_resolution', 'SLM2 · 相位控制点边长', 8, 1920, 0),
+            ('asm_padding_factor', 'P · 零填充倍数', 1, 2147483647, 0),
+            ('asm_supersample_factor', 'K · 超采样倍数', 1, 2147483647, 0),
             ('steps', '每张相位图 SGD 步数', 1, 20000, 0),
             ('learning_rate', 'SGD 学习率', .0001, 10, 4),
             ('settle_seconds', '切图后稳定时间 / s', .05, 30, 2),
@@ -103,6 +105,8 @@ class CalibrationDialog(QtWidgets.QDialog):
             elif key.endswith('_phase_resolution'):
                 control.setToolTip('每边 8～1920 个 SGD 相位控制点，可填 640。训练时重采样到原生有效尺寸；控制点比原生尺寸大时会缩小。')
         self.controls['camera_pitch_um'].setToolTip('用于相机像素与物理尺寸换算。')
+        self.controls['asm_padding_factor'].setToolTip('每方向零填充倍数；新建/恢复默认读取本项目 calibration_config.json，当前默认 2。')
+        self.controls['asm_supersample_factor'].setToolTip('每像素沿两轴细分 K 份，传播后复场平均回原尺寸；不会增加相位参数，显存随 K² 增长。')
         self.controls['angle_radius'].setToolTip('全角度粗搜索完成后，精细搜索使用的初始角度步长。')
         sections = (
             ('光路与器件', (
@@ -115,6 +119,7 @@ class CalibrationDialog(QtWidgets.QDialog):
                 ('slm1_grid_size', 'slm2_grid_size'),
                 ('slm1_sampling_um', 'slm2_sampling_um'),
                 ('slm1_phase_resolution', 'slm2_phase_resolution'),
+                ('asm_padding_factor', 'asm_supersample_factor'),
                 ('steps', 'learning_rate'),
             )),
             ('相机采集与对准搜索', (
@@ -244,6 +249,9 @@ class CalibrationDialog(QtWidgets.QDialog):
             phase.append(f'{key.upper()} {pw}×{ph} → {w}×{h}')
         summary = ('硬件有效区 / 像素间距 / 物理尺寸：' + '；'.join(hardware) + '\n'
                    + 'ASM 网格 / 采样 / 视野：' + '；'.join(grids) + '\n'
+                   + f'ASM：P={config.asm_padding_factor}，K={config.asm_supersample_factor}；'
+                   + 'FFT 边长：' + ' / '.join(str(config.grid_size_for(key) * config.asm_padding_factor
+                                                * config.asm_supersample_factor) for key in ('slm1', 'slm2')) + '\n'
                    + '相位控制点 → 导出尺寸：' + '；'.join(phase))
         if self.source_combo.currentData() == 'development':
             summary += '\n网格范围不足时自动增大；已足够大的手动值会保留。'
@@ -325,13 +333,19 @@ class CalibrationDialog(QtWidgets.QDialog):
                 QtWidgets.QMessageBox.warning(self, '标定包导入失败', str(exc))
 
     def restore_defaults(self):
+        try:
+            defaults = CalibrationConfig.defaults()
+        except (OSError, ValueError) as exc:
+            QtWidgets.QMessageBox.warning(self, '默认硬件配置读取失败', str(exc))
+            return
         self.controller.bundle_path = None
         self.bundle_path_edit.clear()
-        self.apply_config(CalibrationConfig())
+        self.apply_config(defaults)
         config = self.values(validate=False)
         self.log.appendPlainText(
-            f'已恢复硬件采样默认：SLM1 {config.slm1_grid_size}×{config.slm1_grid_size} / {config.slm1_sampling_um:g} μm；'
-            f'SLM2 {config.slm2_grid_size}×{config.slm2_grid_size} / {config.slm2_sampling_um:g} μm。'
+            f'已从 calibration_config.json 恢复默认：SLM1 {config.slm1_grid_size}×{config.slm1_grid_size} / {config.slm1_sampling_um:g} μm；'
+            f'SLM2 {config.slm2_grid_size}×{config.slm2_grid_size} / {config.slm2_sampling_um:g} μm；'
+            f'P={config.asm_padding_factor}，K={config.asm_supersample_factor}。'
             '网格含外围计算区域；改变传播参数后需重新训练。')
 
     def start(self, training_only):

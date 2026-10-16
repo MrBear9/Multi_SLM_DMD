@@ -12,14 +12,15 @@ GRID_EXTENT_TOLERANCE_UM = 1e-8
 
 @dataclass
 class CalibrationConfig:
+    # Literal fallbacks preserve old JSON/bundle semantics. Fresh application
+    # configurations use defaults(), which reads this project's own JSON.
     wavelength_nm: float = 532.0
     slm1_to_slm2_mm: float = 200.0
     slm2_to_camera_mm: float = 100.0
     dmd_width: int = 640
     dmd_height: int = 640
     dmd_pitch_um: float = 5.4
-    # Hardware pitches mirror models/SLM/physical_defaults.py.
-    # The hardware app must remain independent of the models/training package.
+    # No import of the models/training package is needed by the hardware GUI.
     slm1_pitch_um: float = 8.0
     slm2_pitch_um: float = 4.5
     camera_pitch_um: float = 4.0
@@ -29,6 +30,8 @@ class CalibrationConfig:
     slm2_grid_size: int = 1152
     slm1_sampling_um: float = 8.0
     slm2_sampling_um: float = 4.5
+    asm_padding_factor: int = 2
+    asm_supersample_factor: int = 1
     slm1_phase_resolution: int = 128
     slm2_phase_resolution: int = 128
     steps: int = 400
@@ -57,7 +60,20 @@ class CalibrationConfig:
     negative_control_margin: float = 0.04
     max_saturated_fraction: float = 0.02
 
+    @classmethod
+    def defaults(cls, path=None):
+        """Read tools' own JSON for a fresh run, without training/YAML imports.
+
+        Frozen builds bundle the JSON beside the tools package. Loading an old
+        calibration JSON or bundle never calls this factory.
+        """
+        path = Path(path) if path is not None else Path(__file__).resolve().parents[1] / 'calibration_config.json'
+        return cls.read(path, check_grid_coverage=False).fit_grids()
+
     def validate(self, *, check_grid_coverage=True):
+        for key in ('asm_padding_factor', 'asm_supersample_factor'):
+            if type(getattr(self, key)) is not int or getattr(self, key) < 1:
+                raise ValueError(f'{key} 必须为正整数。')
         positive = ('wavelength_nm', 'slm1_to_slm2_mm', 'slm2_to_camera_mm',
                     'dmd_width', 'dmd_height', 'dmd_pitch_um', 'slm1_pitch_um',
                     'slm2_pitch_um', 'camera_pitch_um', 'slm1_sampling_um', 'slm2_sampling_um', 'learning_rate',
