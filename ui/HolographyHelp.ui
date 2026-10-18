@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HolographyHelp</class>
+ <widget class="QDialog" name="HolographyHelp">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>860</width><height>720</height></rect></property>
+  <property name="windowTitle"><string>全息功能帮助</string></property>
+  <layout class="QVBoxLayout" name="helpLayout">
+   <item><layout class="QHBoxLayout" name="searchLayout">
+    <item><widget class="QLineEdit" name="searchEdit"><property name="placeholderText"><string>查找关键词，例如：倍率、ROI、应用、ASM</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+    <item><widget class="QPushButton" name="findButton"><property name="text"><string>查找下一处</string></property><property name="autoDefault"><bool>false</bool></property></widget></item>
+    <item><widget class="QPushButton" name="contentsButton"><property name="text"><string>回到目录</string></property><property name="autoDefault"><bool>false</bool></property></widget></item>
+   </layout></item>
+   <item><widget class="QTextBrowser" name="helpBrowser"><property name="openExternalLinks"><bool>false</bool></property><property name="styleSheet"><string>QTextBrowser { background:white; color:#172b45; border:1px solid #d7e2ef; padding:12px; }</string></property></widget></item>
+   <item><layout class="QHBoxLayout" name="footerLayout">
+    <item><widget class="QLabel" name="searchStatus"><property name="text"><string>本地帮助 · 可在运行时查看</string></property></widget></item>
+    <item><widget class="QPushButton" name="closeButton"><property name="text"><string>关闭帮助</string></property><property name="autoDefault"><bool>false</bool></property></widget></item>
+   </layout></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

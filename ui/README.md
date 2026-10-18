@@ -250,3 +250,19 @@ python -m unittest discover -s tools/tests -v
 ```
 
 GUI 测试在 offscreen 模式下运行，覆盖配置、预览、配对、模拟采集、同步开关、不同宽高比的预览、两片 SLM 偏移边界、PNG、AVI、停止、连接失败回滚和线程退出。未安装 GUI 依赖时会跳过 GUI 测试。实际 SDK 调用已接入，但真实设备连接、显示和取帧仍需在实验台验证。
+# 全息子窗口
+
+`HolographyWindow.ui` 是可用 Qt Designer 编辑的独立子窗口，主界面两页均有
+「全息生成…」入口。保留控件 objectName 即可修改布局；控制层在
+`gui/holography_window.py`，训练与优化由外部 Python 进程完成。
+支持单 SLM1、单 SLM2、双 SLM，以及离线生成、相机回环和传播模型标定。
+五个参数页分别为目标与尺寸、光路与训练、成像与采集、几何标定与 ROI、文件与环境。
+自定义参考宽高采用 px，使用参考像素间距换算；相机方形像元共用一个尺寸输入。
+标题栏「?」和 F1 均打开本地可搜索帮助；帮助界面为
+`HolographyHelp.ui`，正文为 `holography_help.html`，可独立编辑，已列入 Qing.spec。
+尺寸换算、图像适配及几何文件管理位于 `gui/holography_settings.py`。
+「光路与训练」分别设置 SLM1、SLM2 的控制点宽、高；「控制点匹配有效区」
+将所选 SLM 的控制点更新为各自有效尺寸，用于逐像素优化，不向硬件发送图像。
+单 SLM 几何标定入口采集定位点与独立验证点，通过后可应用相机映射和红色目标 ROI。
+目标 ROI 仅用于目标区域提取，不改变相机传感器 ROI；旧的双 SLM 自动对准保持独立。
+环境配置、光学假设及操作说明见 `holography/README.md`。主 GUI 不依赖 torch。

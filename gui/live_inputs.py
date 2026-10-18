@@ -35,7 +35,7 @@ class LiveInputs:
 
     def check_idle(self):
         w = self.window
-        if w.calibration.active or w.disconnecting or w.device_task is not None:
+        if getattr(w, 'automation_active', w.calibration.active) or w.disconnecting or w.device_task is not None:
             raise ValueError('请等待标定、连接或上传操作完成。')
 
     def pause_inputs(self, keys):
@@ -260,7 +260,7 @@ class LiveInputs:
 
     def update_actions(self):
         w = self.window
-        available = not (w.disconnecting or w.device_task is not None or w.calibration.active)
+        available = not (w.disconnecting or w.device_task is not None or getattr(w, 'automation_active', w.calibration.active))
         for key in ('dmd', 'slm1', 'slm2'):
             ordinary = not self.network(key)
             getattr(w, key + 'ImportImagesButton').setEnabled(available and ordinary and w.device_enabled(key))

@@ -2469,6 +2469,11 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="holographySetupButton">
+            <property name="text"><string>全息生成…</string></property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="calibrationSetupButton">
             <property name="text">
              <string>自动标定…</string>
@@ -2590,6 +2595,11 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
             <property name="checked">
              <bool>true</bool>
             </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="holographyPreviewButton">
+            <property name="text"><string>全息生成…</string></property>
            </widget>
           </item>
           <item>

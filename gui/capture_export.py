@@ -39,7 +39,7 @@ class CaptureExport(QtCore.QObject):
 
     def update_actions(self):
         w = self.window
-        available = not (self.dialog_open or self.job is not None or w.calibration.active
+        available = not (self.dialog_open or self.job is not None or getattr(w, 'automation_active', w.calibration.active)
                          or w.device_task is not None or w.disconnecting or w.closing)
         live = w.camera_ready and w.received_frames > 0
         frozen = w.ccd_detail.frozen and w.ccd_detail.displayed is not None
@@ -48,7 +48,7 @@ class CaptureExport(QtCore.QObject):
 
     def save_as(self, detail=False):
         w = self.window
-        if (self.dialog_open or self.job is not None or w.calibration.active
+        if (self.dialog_open or self.job is not None or getattr(w, 'automation_active', w.calibration.active)
                 or w.device_task is not None or w.disconnecting or w.closing):
             return
         # Keep the frame and its orientation before opening the nested dialog loop.

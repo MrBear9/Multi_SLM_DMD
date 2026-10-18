@@ -117,7 +117,7 @@ class CcdDetailController(QtCore.QObject):
 
     def choose_output_directory(self):
         w = self.window
-        if w.calibration.active or w.disconnecting or w.device_task is not None:
+        if getattr(w, 'automation_active', w.calibration.active) or w.disconnecting or w.device_task is not None:
             return
         text = w.outputDirectoryEdit.text()
         initial = str(input_path(text)) if text.strip() else ''
@@ -132,7 +132,7 @@ class CcdDetailController(QtCore.QObject):
     def set_output_directory(self, text):
         w = self.window
         previous = w.outputDirectoryEdit.text()
-        if w.calibration.active or w.disconnecting or w.device_task is not None:
+        if getattr(w, 'automation_active', w.calibration.active) or w.disconnecting or w.device_task is not None:
             self.sync_output_directory(previous)
             return
         text = text.strip()
@@ -159,7 +159,7 @@ class CcdDetailController(QtCore.QObject):
         w.ccdDetailRecordButton.setEnabled(w.ccdRecordButton.isEnabled())
         w.ccdDetailRecordButton.setText(w.ccdRecordButton.text())
         w.ccdDetailOutputBrowseButton.setEnabled(
-            not (w.calibration.active or w.disconnecting or w.device_task is not None))
+            not (getattr(w, 'automation_active', w.calibration.active) or w.disconnecting or w.device_task is not None))
         w.ccdDetailOutputDirectoryEdit.setEnabled(w.ccdDetailOutputBrowseButton.isEnabled())
         suffix = ' · 录像处理中' if w.recording_pending else (' · 正在录像' if w.recording else '')
         w.ccdDetailSaveStatusLabel.setText(f'已保存 {w.saved_frames} 帧' + suffix)

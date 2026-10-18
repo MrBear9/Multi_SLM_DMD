@@ -1,0 +1,2546 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>HolographyWindow</class>
+ <widget class="QDialog" name="HolographyWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1120</width>
+    <height>900</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>全息生成与模型标定</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout" stretch="0,0,0,0,1,0,0,0">
+   <item>
+    <layout class="QHBoxLayout" name="modeLayout">
+     <item>
+      <widget class="QLabel" name="modeLabel">
+       <property name="text">
+        <string>调制模式</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="mode">
+       <item>
+        <property name="text">
+         <string>SLM1 + 相机</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SLM2 + 相机</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>双 SLM + 相机</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="operationLabel">
+       <property name="text">
+        <string>操作</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="operation">
+       <item>
+        <property name="text">
+         <string>全息生成（离线）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>相机回环优化</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>传播模型标定</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="loadConfigButton">
+       <property name="text">
+        <string>载入参数</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="saveConfigButton">
+       <property name="text">
+        <string>保存参数</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="descriptionLabel">
+     <property name="text">
+      <string>训练由外部 Python 环境执行；主程序统一管理硬件。请先完成光路几何对准。</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="designPreviewNotice">
+     <property name="text">
+      <string>尺寸按目标平面计算；单 SLM 几何标定通过独立验证后应用。定位失败时请检查光路与曝光。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string>color:#946000; background:#fff5dc; padding:5px; border-radius:4px;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QScrollArea" name="parameterScroll">
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="parameterContents">
+      <layout class="QVBoxLayout" name="parameterLayout">
+       <item>
+        <widget class="QTabWidget" name="settingsTabs">
+         <widget class="QWidget" name="targetDesignPage">
+          <attribute name="title">
+           <string>目标与尺寸</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="targetDesignPageLayout">
+           <item>
+            <widget class="QGroupBox" name="targetImageGroup">
+             <layout class="QGridLayout" name="targetImageGroupLayout" columnstretch="0,1,0,1">
+              <property name="horizontalSpacing">
+               <number>14</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0" colspan="4">
+               <layout class="QHBoxLayout" name="targetFileRow">
+                <item>
+                 <widget class="QLabel" name="targetLabel">
+                  <property name="text">
+                   <string>目标强度图</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="target" />
+                </item>
+                <item>
+                 <widget class="QPushButton" name="targetBrowse">
+                  <property name="text">
+                   <string>浏览…</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="inputImageSizeDisplayCaption">
+                <property name="text">
+                 <string>输入图像 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="inputImageSizeDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>待读取宽 × 高</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="targetFitModeComboBoxCaption">
+                <property name="text">
+                 <string>图像适配</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QComboBox" name="targetFitModeComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>等比例适应 · 留边</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>等比例填满 · 裁剪</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>拉伸填满</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="referenceSourceComboBoxCaption">
+                <property name="text">
+                 <string>参考来源</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QComboBox" name="referenceSourceComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>所选 SLM 有效区域</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>DMD 输入区域</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>自定义像素尺寸</string>
+                 </property>
+                </item>
+                <property name="currentIndex">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="targetSizingModeComboBoxCaption">
+                <property name="text">
+                 <string>尺寸设置</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QComboBox" name="targetSizingModeComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>按参考尺寸 × 倍率</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>手动输入目标宽高</string>
+                 </property>
+                </item>
+                <property name="currentIndex">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="referenceWidthSpinBoxCaption">
+                <property name="text">
+                 <string>参考宽度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="referenceWidthSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>1920</double>
+                </property>
+                <property name="value">
+                 <double>640</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="referenceHeightSpinBoxCaption">
+                <property name="text">
+                 <string>参考高度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="3">
+               <widget class="QDoubleSpinBox" name="referenceHeightSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>1080</double>
+                </property>
+                <property name="value">
+                 <double>640</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="referencePitchSpinBoxCaption">
+                <property name="text">
+                 <string>参考像素间距 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QDoubleSpinBox" name="referencePitchSpinBox">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>5.4</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="reconstructionScaleSpinBoxCaption">
+                <property name="text">
+                 <string>重建倍率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="3">
+               <widget class="QDoubleSpinBox" name="reconstructionScaleSpinBox">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>1</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="customWidthSpinBoxCaption">
+                <property name="text">
+                 <string>自定义参考宽 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QDoubleSpinBox" name="customWidthSpinBox">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>1000000</double>
+                </property>
+                <property name="value">
+                 <double>640</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>自定义像素数 × 参考像素间距 = 参考物理尺寸。此处不改变 SLM 相位文件的分辨率。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="2">
+               <widget class="QLabel" name="customHeightSpinBoxCaption">
+                <property name="text">
+                 <string>自定义参考高 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="3">
+               <widget class="QDoubleSpinBox" name="customHeightSpinBox">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>1000000</double>
+                </property>
+                <property name="value">
+                 <double>640</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>自定义像素数 × 参考像素间距 = 参考物理尺寸。此处不改变 SLM 相位文件的分辨率。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="target_width_umLabel">
+                <property name="text">
+                 <string>目标视野宽度 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QDoubleSpinBox" name="target_width_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>1</double>
+                </property>
+                <property name="maximum">
+                 <double>20000</double>
+                </property>
+                <property name="value">
+                 <double>1000</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="2">
+               <widget class="QLabel" name="target_height_umLabel">
+                <property name="text">
+                 <string>目标视野高度 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="3">
+               <widget class="QDoubleSpinBox" name="target_height_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>1</double>
+                </property>
+                <property name="maximum">
+                 <double>20000</double>
+                </property>
+                <property name="value">
+                 <double>1000</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0" colspan="4">
+               <widget class="QLabel" name="targetSizeFormulaLabel">
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>参考物理尺寸 × 重建倍率 → 目标宽高（μm / mm）。</string>
+                </property>
+                <property name="toolTip">
+                 <string>例如 DMD 640 × 640 px、5.4 μm、1×，目标为 3456 × 3456 μm，即 3.456 × 3.456 mm。</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+             <property name="title">
+              <string>输入、物理尺寸与图像适配</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="targetDesignSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>10</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="opticsPage">
+          <attribute name="title">
+           <string>光路与训练</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="opticsPageLayout">
+           <item>
+            <widget class="QGroupBox" name="group0">
+             <property name="title">
+              <string>光路与计算</string>
+             </property>
+             <layout class="QGridLayout" name="grid0">
+              <item row="0" column="0">
+               <widget class="QLabel" name="wavelength_nmLabel">
+                <property name="text">
+                 <string>波长 / nm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="wavelength_nm">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>100</double>
+                </property>
+                <property name="maximum">
+                 <double>2000</double>
+                </property>
+                <property name="value">
+                 <double>532</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="slm1_widthLabel">
+                <property name="text">
+                 <string>SLM1 有效宽度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QSpinBox" name="slm1_width">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>432</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="slm2_widthLabel">
+                <property name="text">
+                 <string>SLM2 有效宽度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QSpinBox" name="slm2_width">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>768</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="slm1_heightLabel">
+                <property name="text">
+                 <string>SLM1 有效高度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="slm1_height">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1080</number>
+                </property>
+                <property name="value">
+                 <number>432</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="slm2_heightLabel">
+                <property name="text">
+                 <string>SLM2 有效高度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QSpinBox" name="slm2_height">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1080</number>
+                </property>
+                <property name="value">
+                 <number>768</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="slm1_pitch_umLabel">
+                <property name="text">
+                 <string>SLM1 像素间距 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QDoubleSpinBox" name="slm1_pitch_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>8</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="2">
+               <widget class="QLabel" name="slm2_pitch_umLabel">
+                <property name="text">
+                 <string>SLM2 像素间距 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="3">
+               <widget class="QDoubleSpinBox" name="slm2_pitch_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>4.5</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="slm1_distance_mmLabel">
+                <property name="text">
+                 <string>单层 SLM1 → 目标平面 / mm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QDoubleSpinBox" name="slm1_distance_mm">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>10000</double>
+                </property>
+                <property name="value">
+                 <double>300</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="2">
+               <widget class="QLabel" name="slm2_distance_mmLabel">
+                <property name="text">
+                 <string>SLM2 → 目标平面 / mm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="3">
+               <widget class="QDoubleSpinBox" name="slm2_distance_mm">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>10000</double>
+                </property>
+                <property name="value">
+                 <double>100</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLabel" name="inter_slm_mmLabel">
+                <property name="text">
+                 <string>双层 SLM1 → SLM2 / mm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QDoubleSpinBox" name="inter_slm_mm">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>10000</double>
+                </property>
+                <property name="value">
+                 <double>200</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="2">
+               <widget class="QLabel" name="sampling_umLabel">
+                <property name="text">
+                 <string>ASM 采样 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="3">
+               <widget class="QDoubleSpinBox" name="sampling_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>4.5</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="grid_widthLabel">
+                <property name="text">
+                 <string>ASM 网格宽度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QSpinBox" name="grid_width">
+                <property name="minimum">
+                 <number>32</number>
+                </property>
+                <property name="maximum">
+                 <number>4096</number>
+                </property>
+                <property name="value">
+                 <number>1152</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QLabel" name="grid_heightLabel">
+                <property name="text">
+                 <string>ASM 网格高度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="3">
+               <widget class="QSpinBox" name="grid_height">
+                <property name="minimum">
+                 <number>32</number>
+                </property>
+                <property name="maximum">
+                 <number>4096</number>
+                </property>
+                <property name="value">
+                 <number>1152</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="QLabel" name="output_widthLabel">
+                <property name="text">
+                 <string>目标计算宽度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="QSpinBox" name="output_width">
+                <property name="minimum">
+                 <number>16</number>
+                </property>
+                <property name="maximum">
+                 <number>1024</number>
+                </property>
+                <property name="value">
+                 <number>256</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="2">
+               <widget class="QLabel" name="output_heightLabel">
+                <property name="text">
+                 <string>目标计算高度 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="3">
+               <widget class="QSpinBox" name="output_height">
+                <property name="minimum">
+                 <number>16</number>
+                </property>
+                <property name="maximum">
+                 <number>1024</number>
+                </property>
+                <property name="value">
+                 <number>256</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0" colspan="2">
+               <widget class="QPushButton" name="matchTargetButton">
+                <property name="text"><string>匹配目标比例</string></property>
+                <property name="autoDefault"><bool>false</bool></property>
+                <property name="toolTip"><string>保留目标计算宽度，按最终目标视野的物理宽高比计算高度（取整数）。仅点击时调整，不改变目标物理视野或相位尺寸。</string></property>
+               </widget>
+              </item>
+              <item row="10" column="2" colspan="2">
+               <widget class="QLabel" name="targetSamplingLabel">
+                <property name="text"><string>目标计算：256×256；目标采样：3.906×3.906 μm</string></property>
+                <property name="wordWrap"><bool>true</bool></property>
+                <property name="toolTip"><string>横向采样 = 目标物理宽度 ÷ 计算宽度；纵向采样 = 目标物理高度 ÷ 计算高度。匹配比例取整后，两个方向的采样可能略有差异。</string></property>
+               </widget>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLabel" name="stepsLabel">
+                <property name="text">
+                 <string>全息优化步数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QSpinBox" name="steps">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>20000</number>
+                </property>
+                <property name="value">
+                 <number>200</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="learning_rateLabel">
+                <property name="text">
+                 <string>学习率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="3">
+               <widget class="QDoubleSpinBox" name="learning_rate">
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="minimum">
+                 <double>0.00001</double>
+                </property>
+                <property name="maximum">
+                 <double>1</double>
+                </property>
+                <property name="value">
+                 <double>0.03</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QLabel" name="samplesLabel">
+                <property name="text">
+                 <string>模型标定采集组数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1">
+               <widget class="QSpinBox" name="samples">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>32</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="2">
+               <widget class="QLabel" name="epochsLabel">
+                <property name="text">
+                 <string>模型标定训练轮数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="3">
+               <widget class="QSpinBox" name="epochs">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>10000</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="0">
+               <widget class="QLabel" name="feedback_everyLabel">
+                <property name="text">
+                 <string>回环采集间隔 / 步</string>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="1">
+               <widget class="QSpinBox" name="feedback_every">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>5</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="2">
+               <widget class="QLabel" name="gray_invertedLabel">
+                <property name="text">
+                 <string />
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="3">
+               <widget class="QCheckBox" name="gray_inverted">
+                <property name="text">
+                 <string>默认灰度相位反向</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="2" colspan="2">
+               <widget class="QPushButton" name="matchControlsButton">
+                <property name="text">
+                 <string>控制点匹配有效区</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>把当前所选 SLM 的控制点宽高设置为其有效宽高，实现逐像素优化。只修改参数，不向硬件发送图像。更改有效区后可再次点击；手动降低控制点不会被自动覆盖。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="slm1_controls_widthLabel">
+                <property name="text">
+                 <string>SLM1 控制点宽 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QSpinBox" name="slm1_controls_width">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>432</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>优化器直接调整的控制点数。宽高与有效区相同时逐像素优化；较小矩形控制点插值到有效区。建议保持有效区宽高比，例如 1920×1080 可用 960×540。此参数用于全息生成与相机回环。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="slm1_controls_heightLabel">
+                <property name="text">
+                 <string>SLM1 控制点高 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QSpinBox" name="slm1_controls_height">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>432</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>优化器直接调整的控制点数。宽高与有效区相同时逐像素优化；较小矩形控制点插值到有效区。建议保持有效区宽高比，例如 1920×1080 可用 960×540。此参数用于全息生成与相机回环。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="slm2_controls_widthLabel">
+                <property name="text">
+                 <string>SLM2 控制点宽 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="3">
+               <widget class="QSpinBox" name="slm2_controls_width">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>768</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>优化器直接调整的控制点数。宽高与有效区相同时逐像素优化；较小矩形控制点插值到有效区。建议保持有效区宽高比，例如 1920×1080 可用 960×540。此参数用于全息生成与相机回环。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="slm2_controls_heightLabel">
+                <property name="text">
+                 <string>SLM2 控制点高 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="3">
+               <widget class="QSpinBox" name="slm2_controls_height">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>1920</number>
+                </property>
+                <property name="value">
+                 <number>768</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>优化器直接调整的控制点数。宽高与有效区相同时逐像素优化；较小矩形控制点插值到有效区。建议保持有效区宽高比，例如 1920×1080 可用 960×540。此参数用于全息生成与相机回环。</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="opticsPageSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>10</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="cameraPage">
+          <attribute name="title">
+           <string>成像与采集</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="cameraPageLayout">
+           <item>
+            <widget class="QGroupBox" name="imagingDesignGroup">
+             <property name="title">
+              <string>光路与相机</string>
+             </property>
+             <layout class="QGridLayout" name="imagingDesignGroupLayout" columnstretch="0,1,0,1">
+              <property name="horizontalSpacing">
+               <number>14</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="cameraOpticalPathComboBoxCaption">
+                <property name="text">
+                 <string>采集光路</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="cameraOpticalPathComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>SLM → 相机（直接采集）</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>重建平面 → 成像透镜 → 相机</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>透镜参与全息传播（模型待扩展）</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QLabel" name="cameraProfileComboBoxCaption">
+                <property name="text">
+                 <string>相机配置</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QComboBox" name="cameraProfileComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>当前连接相机（SDK 读取）</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ToupTek · IUC26000KMA</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>度申 · M3S130-H-02C</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="sensorPitchSpinBoxCaption">
+                <property name="text">
+                 <string>像元尺寸 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="sensorPitchSpinBox">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>3.76</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>方形像元只需一个尺寸，手动修改时同时设置 X、Y。SDK 若返回非方形像元，会保留真实 X、Y 值并在右侧提示。Binning 不等于原生像元尺寸。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2" colspan="2">
+               <widget class="QLabel" name="sensorPitchNoteLabel">
+                <property name="text">
+                 <string>方形像元 · X / Y 共用</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="binningXSpinBoxCaption">
+                <property name="text">
+                 <string>采样合并 X</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QDoubleSpinBox" name="binningXSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>16</double>
+                </property>
+                <property name="value">
+                 <double>1</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="binningYSpinBoxCaption">
+                <property name="text">
+                 <string>采样合并 Y</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QDoubleSpinBox" name="binningYSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>16</double>
+                </property>
+                <property name="value">
+                 <double>1</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="relayMagnificationSpinBoxCaption">
+                <property name="text">
+                 <string>中继成像倍率 |M|</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="relayMagnificationSpinBox">
+                <property name="decimals">
+                 <number>4</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>1</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="magnificationSourceComboBoxCaption">
+                <property name="text">
+                 <string>倍率来源</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="3">
+               <widget class="QComboBox" name="magnificationSourceComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>手动初值，标定后核验</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>使用已验证的标定结果</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="4" column="0" colspan="4">
+               <widget class="QLabel" name="imagingFormulaLabel">
+                <property name="text">
+                 <string>理想成像初值：有效采样 = 像元间距 × Binning ÷ |M|；实际比较使用验证后的坐标映射。</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="group1">
+             <layout class="QGridLayout" name="grid1">
+              <item row="0" column="0">
+               <widget class="QLabel" name="camera_darkLabel">
+                <property name="text">
+                 <string>相机暗电平 / DN</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="camera_dark">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>65535</double>
+                </property>
+                <property name="value">
+                 <double>0</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QLabel" name="camera_whiteLabel">
+                <property name="text">
+                 <string>相机饱和电平 / DN</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QDoubleSpinBox" name="camera_white">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>1</double>
+                </property>
+                <property name="maximum">
+                 <double>65535</double>
+                </property>
+                <property name="value">
+                 <double>255</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="settle_secondsLabel">
+                <property name="text">
+                 <string>切图后等待 / s</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="settle_seconds">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>60</double>
+                </property>
+                <property name="value">
+                 <double>0.5</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="average_framesLabel">
+                <property name="text">
+                 <string>每次平均帧数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QSpinBox" name="average_frames">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="discard_framesLabel">
+                <property name="text">
+                 <string>稳定后丢弃帧数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="discard_frames">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="capture_timeoutLabel">
+                <property name="text">
+                 <string>采集超时 / s</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QDoubleSpinBox" name="capture_timeout">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>1</double>
+                </property>
+                <property name="maximum">
+                 <double>180</double>
+                </property>
+                <property name="value">
+                 <double>20</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+             </layout>
+             <property name="title">
+              <string>现有采集参数</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="cameraPageSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>10</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="geometryDesignPage">
+          <attribute name="title">
+           <string>几何标定与 ROI</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="geometryDesignPageLayout">
+           <item>
+            <widget class="QGroupBox" name="geometryWorkflowGroup">
+             <property name="title">
+              <string>单 SLM 几何标定</string>
+             </property>
+             <layout class="QGridLayout" name="geometryWorkflowGroupLayout" columnstretch="0,1,0,1">
+              <property name="horizontalSpacing">
+               <number>14</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="geometryProfileComboBoxCaption">
+                <property name="text">
+                 <string>标定配置</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="geometryProfileComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>当前光路 · 未标定</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>SLM1 / 相机配置</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>SLM2 / 相机配置</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>双 SLM / 相机配置</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QLabel" name="geometryPatternComboBoxCaption">
+                <property name="text">
+                 <string>定位图案</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QComboBox" name="geometryPatternComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>逐点定位 + 独立验证点</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>非对称点位 · 逐点定位</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="geometryMappingComboBoxCaption">
+                <property name="text">
+                 <string>映射方式</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="geometryMappingComboBox">
+                <property name="toolTip">
+                 <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>平移 / 旋转 / 镜像 / 等比例尺度</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>仿射（含横纵尺度、剪切）</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>透视（平面成像）</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="geometryToleranceSpinBoxCaption">
+                <property name="text">
+                 <string>允许验证误差 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QDoubleSpinBox" name="geometryToleranceSpinBox">
+                <property name="decimals">
+                 <number>2</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>2</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实际光路填写；改变尺寸或成像参数后需重新核验标定。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="4">
+               <layout class="QHBoxLayout" name="geometryButtonsLayout">
+                <item>
+                 <widget class="QPushButton" name="geometryStartButton">
+                  <property name="text">
+                   <string>开始几何标定</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>使用当前光路配置进行几何标定的载入、验证与应用。</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="geometryLoadButton">
+                  <property name="text">
+                   <string>载入标定配置…</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>使用当前光路配置进行几何标定的载入、验证与应用。</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="geometrySaveButton">
+                  <property name="text">
+                   <string>保存标定配置…</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>使用当前光路配置进行几何标定的载入、验证与应用。</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="geometryResultGroup">
+             <property name="title">
+              <string>目标 ROI 与验证结果</string>
+             </property>
+             <layout class="QGridLayout" name="geometryResultGroupLayout" columnstretch="0,1,0,1">
+              <property name="horizontalSpacing">
+               <number>14</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="roiPhysicalSizeDisplayCaption">
+                <property name="text">
+                 <string>目标物理区域 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="roiPhysicalSizeDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>由目标宽高生成</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QLabel" name="roiCameraBoundsDisplayCaption">
+                <property name="text">
+                 <string>相机目标边界 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QLineEdit" name="roiCameraBoundsDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>待标定：四角坐标 / 外接矩形</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="calibratedSamplingDisplayCaption">
+                <property name="text">
+                 <string>有效采样 X / Y</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="calibratedSamplingDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>待标定（μm / px）</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="geometryErrorDisplayCaption">
+                <property name="text">
+                 <string>独立验证误差 / px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QLineEdit" name="geometryErrorDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>待验证</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="geometryCoverageDisplayCaption">
+                <property name="text">
+                 <string>可见覆盖率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLineEdit" name="geometryCoverageDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>待检查：是否超出画面</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="geometryStatusDisplayCaption">
+                <property name="text">
+                 <string>标定状态</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QLineEdit" name="geometryStatusDisplay">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>未标定 · 不代表已对准</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="4">
+               <layout class="QHBoxLayout" name="roiActionsLayout">
+                <item>
+                 <widget class="QCheckBox" name="showTargetRoiCheckBox">
+                  <property name="text">
+                   <string>显示红色目标 ROI</string>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="rectifyTargetCheckBox">
+                  <property name="text">
+                   <string>显示坐标校正结果</string>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="applyGeometryButton">
+                  <property name="text">
+                   <string>应用映射与目标 ROI</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>使用当前光路配置进行几何标定的载入、验证与应用。</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="4" column="0" colspan="4">
+               <widget class="QLabel" name="roiScopeLabel">
+                <property name="text">
+                 <string>目标 ROI 用于重建比较，边界可为四边形；本阶段保留完整采集，不自动修改相机硬件 ROI。</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="manualMappingGroup">
+             <property name="title">
+              <string>现有手动映射</string>
+             </property>
+             <layout class="QGridLayout" name="manualMappingGroupLayout" columnstretch="0,1,0,1">
+              <property name="horizontalSpacing">
+               <number>14</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="camera_center_xLabel">
+                <property name="text">
+                 <string>目标中心 X / 原始 px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="camera_center_x">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>50000</double>
+                </property>
+                <property name="value">
+                 <double>0</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QLabel" name="camera_center_yLabel">
+                <property name="text">
+                 <string>目标中心 Y / 原始 px</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QDoubleSpinBox" name="camera_center_y">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0</double>
+                </property>
+                <property name="maximum">
+                 <double>50000</double>
+                </property>
+                <property name="value">
+                 <double>0</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="camera_angle_degLabel">
+                <property name="text">
+                 <string>坐标映射旋转 / °</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="camera_angle_deg">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>-180</double>
+                </property>
+                <property name="maximum">
+                 <double>180</double>
+                </property>
+                <property name="value">
+                 <double>0</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="camera_pitch_umLabel">
+                <property name="text">
+                 <string>相机有效采样 / μm</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QDoubleSpinBox" name="camera_pitch_um">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>100</double>
+                </property>
+                <property name="value">
+                 <double>3.76</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="camera_flip_xLabel">
+                <property name="text">
+                 <string />
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QCheckBox" name="camera_flip_x">
+                <property name="text">
+                 <string>映射水平翻转</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="camera_flip_yLabel">
+                <property name="text">
+                 <string />
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QCheckBox" name="camera_flip_y">
+                <property name="text">
+                 <string>映射垂直翻转</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="mappingLayout">
+             <item>
+              <widget class="QPushButton" name="cameraCenterButton">
+               <property name="text">
+                <string>使用当前相机中心</string>
+               </property>
+               <property name="autoDefault">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="mapping_confirmed">
+               <property name="text">
+                <string>已核对坐标映射、固定曝光、线性输出及黑白电平</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="geometryDesignSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>10</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="filesPage">
+          <attribute name="title">
+           <string>文件与环境</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="filesPageLayout">
+           <item>
+            <widget class="QGroupBox" name="pathsGroup">
+             <property name="title">
+              <string>文件与开发环境</string>
+             </property>
+             <layout class="QGridLayout" name="pathsLayout">
+              <item row="0" column="0">
+               <widget class="QLabel" name="pythonPathLabel">
+                <property name="text">
+                 <string>开发环境 Python</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="pythonPath" />
+              </item>
+              <item row="0" column="2">
+               <widget class="QPushButton" name="pythonPathBrowse">
+                <property name="text">
+                 <string>浏览…</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="workerPathLabel">
+                <property name="text">
+                 <string>训练入口 worker.py</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="workerPath" />
+              </item>
+              <item row="1" column="2">
+               <widget class="QPushButton" name="workerPathBrowse">
+                <property name="text">
+                 <string>浏览…</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="model_pathLabel">
+                <property name="text">
+                 <string>已标定模型 / 可空</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLineEdit" name="model_path" />
+              </item>
+              <item row="2" column="2">
+               <widget class="QPushButton" name="model_pathBrowse">
+                <property name="text">
+                 <string>浏览…</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="outputPathLabel">
+                <property name="text">
+                 <string>结果目录</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLineEdit" name="outputPath" />
+              </item>
+              <item row="3" column="2">
+               <widget class="QPushButton" name="outputPathBrowse">
+                <property name="text">
+                 <string>浏览…</string>
+                </property>
+                <property name="autoDefault">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="filesPageSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>10</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>400</height>
+      </size>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>400</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="previewsLayout">
+     <item>
+      <widget class="QGroupBox" name="targetPreviewGroup">
+       <property name="title">
+        <string>目标</string>
+       </property>
+       <layout class="QVBoxLayout" name="targetPreviewLayout" stretch="0,1">
+        <item>
+         <widget class="QComboBox" name="targetDesignViewComboBox">
+          <property name="toolTip">
+           <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>训练目标（最近结果）</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>输入原图</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>适配后目标</string>
+           </property>
+          </item>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="targetPreview">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>180</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="text">
+           <string>等待结果</string>
+          </property>
+          <property name="styleSheet">
+           <string>background:#101e30;color:#abc;</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="simulationPreviewGroup">
+       <property name="title">
+        <string>模拟重建</string>
+       </property>
+       <layout class="QVBoxLayout" name="simulationPreviewLayout" stretch="0,1">
+        <item>
+         <widget class="QLabel" name="simulationScopeLabel">
+          <property name="text">
+           <string>目标平面 · 模拟强度</string>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>32</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="simulationPreview">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>180</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="text">
+           <string>等待结果</string>
+          </property>
+          <property name="styleSheet">
+           <string>background:#101e30;color:#abc;</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="cameraPreviewGroup">
+       <property name="title">
+        <string>实拍重建</string>
+       </property>
+       <layout class="QVBoxLayout" name="cameraPreviewLayout" stretch="0,1">
+        <item>
+         <widget class="QComboBox" name="cameraDesignViewComboBox">
+          <property name="toolTip">
+           <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>实拍重建（最近结果）</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>原始相机 + 目标 ROI</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>校正后的目标区域</string>
+           </property>
+          </item>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="cameraPreview">
+          <property name="minimumSize">
+           <size>
+            <width>180</width>
+            <height>180</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="text">
+           <string>等待结果</string>
+          </property>
+          <property name="styleSheet">
+           <string>background:#101e30;color:#abc;</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="log">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>80</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="progress">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actionLayout">
+     <item>
+      <widget class="QPushButton" name="startButton">
+       <property name="text">
+        <string>开始</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="stopButton">
+       <property name="text">
+        <string>停止</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="loadResultButton">
+       <property name="text">
+        <string>载入相位结果…</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="applyButton">
+       <property name="text">
+        <string>应用生成相位</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="closeButton">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources />
+ <connections />
+</ui>

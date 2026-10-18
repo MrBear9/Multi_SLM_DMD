@@ -32,6 +32,7 @@ from .ccd_detail import CcdDetailController
 from .toupcam_controls import ToupControls
 from .live_inputs import LiveInputs
 from .capture_export import CaptureExport
+from .holography_controller import HolographyController
 from ..utils.camera_settings import selected_camera, camera_value
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
@@ -68,6 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_parameters = {}
         self.camera_preview_packet = None
         self.calibration = CalibrationController(self)
+        self.holography = HolographyController(self)
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
         self.inputs = LiveInputs(self)
         self.demo_directory = None
@@ -114,6 +116,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stopAllButton.clicked.connect(self.stop_all)
         self.autoCalibrateButton.clicked.connect(self.calibration.open)
         self.calibrationSetupButton.clicked.connect(self.calibration.open)
+        self.holographySetupButton.clicked.connect(self.holography.open)
+        self.holographyPreviewButton.clicked.connect(self.holography.open)
         for key in ('slm1', 'slm2'):
             getattr(self, key + 'ApplyOffsetButton').clicked.connect(partial(self.guard, partial(self.apply_offset, key)))
         self.synchronizeDmdCcdCheckBox.toggled.connect(self.capture_sync_changed)
@@ -148,6 +152,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.reload_safely(key)
         self.update_actions()
         self.statusBar().showMessage('演示模式：不会加载厂商 DLL 或连接真实硬件。' if demo else '就绪：配置参数后连接设备。')
+
+    @property
+    def automation_active(self):
+        return self.calibration.active or self.holography.hardware_active
 
     def guard(self, action, *_):
         try:
@@ -300,7 +308,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.guard(lambda: write_configuration(Path(path), read_values(self)))
 
     def reload_safely(self, key):
-        if self.device_task is not None or self.calibration.active:
+        if self.device_task is not None or self.automation_active:
             return
         if key in self.devices:
             if key == 'dmd' and self.network_dmd() is not None:
@@ -598,6 +606,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdStateLabel.setText('● ' + message[:50])
 
     def disconnect_devices(self, *_):
+        if self.holography.hardware_active:
+            self.holography.disconnect_after = True
+            self.holography.cancel()
+            return
         if self.calibration.active:
             self.calibration.disconnect_after = True
             self.calibration.cancel()
@@ -831,6 +843,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def stop_all(self, *_):
         self.cancel_slm_capture()
         self.calibration.cancel()
+        self.holography.cancel()
         for timer in self.timers.values():
             timer.stop()
         if self.device_task is not None:
@@ -905,7 +918,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def transform_editable(self, key):
         if key in self.inputs.tests:
             return False
-        if self.calibration.active or self.disconnecting or self.device_task is not None:
+        if self.automation_active or self.disconnecting or self.device_task is not None:
             return False
         synchronized_capture = self.synchronizeDmdCcdCheckBox.isChecked() and self.timers['dmd'].isActive()
         if synchronized_capture or self.slm_capture_running():
@@ -1234,7 +1247,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for key in (*DISPLAY_KEYS, 'ccd'):
             for suffix in TRANSFORM_SUFFIXES:
                 getattr(self, key + suffix).setEnabled(self.transform_editable(key))
-        calibrating = self.calibration.active
+        calibrating = self.automation_active
         self.saveConfigurationButton.setEnabled(not calibrating)
         self.autoCalibrateButton.setText('标定进度…' if calibrating else '自动标定 / 光路对准')
         self.previewScrollContents.setEnabled(not calibrating)
@@ -1247,6 +1260,8 @@ class MainWindow(QtWidgets.QMainWindow):
                             self.enumerateDevicesButton, self.validateConfigurationButton):
                 control.setEnabled(False)
             self.stopAllButton.setEnabled(True)
+        if self.holography.active:
+            self.stopAllButton.setEnabled(True)
         self.inputs.update_actions()
         if hasattr(self, 'ccd_detail'):
             self.ccd_detail.update_capture_actions()
@@ -1254,6 +1269,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.capture_export.update_actions()
 
     def closeEvent(self, event):
+        if self.holography.active:
+            self.closing = True
+            self.holography.cancel()
+            event.ignore()
+            return
         if self.capture_export.job is not None:
             self.closing = True
             self.statusBar().showMessage('正在完成冻结帧保存，完成后关闭。')

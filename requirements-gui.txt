@@ -22,6 +22,7 @@ PyInstaller>=6,<7
 
 # GUI / EXE 使用导入的标定包，不依赖 PyTorch。
 # 本地 ASM + SGD 训练另装 calibration/requirements.txt。
+# 新增全息子窗口的外部训练环境另装 holography/requirements.txt。
 
 # 非 pip 依赖：
 # - 部分 DMD 命令行工具需要 Tkinter/Tcl/Tk；Conda 环境可安装 tk。

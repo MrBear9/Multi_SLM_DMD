@@ -116,6 +116,8 @@ class CalibrationController(QtCore.QObject):
         self.dialog.activateWindow()
 
     def start(self, config, output, training_only, bundle_path=None):
+        if getattr(self.window, 'holography', None) is not None and self.window.holography.active:
+            raise ValueError('请先完成全息任务，再启动光路自动标定。')
         if self.active:
             raise ValueError('标定任务正在运行。')
         window = self.window
