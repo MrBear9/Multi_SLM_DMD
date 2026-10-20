@@ -1,5 +1,6 @@
 """Physical target coordinates (micrometres) to untransformed camera pixels."""
 import math
+import copy
 import cv2
 import numpy as np
 
@@ -10,6 +11,11 @@ def signature(config):
              'camera_optical_path', 'sensor_pitch_x_um', 'sensor_pitch_y_um',
              'binning_x', 'binning_y', 'relay_magnification', 'camera_profile')
     result = {name: getattr(config, name) for name in names}
+    if config.geometry_probe != 'focus':
+        result.update(geometry_probe=config.geometry_probe,
+                      geometry_probe_radius_um=config.geometry_probe_radius_um,
+                      geometry_axicon_period_um=config.geometry_axicon_period_um,
+                      probe_coordinates='fixed_pattern_fresnel_tilt')
     for slm in config.active_slms:
         for suffix in ('width', 'height', 'pitch_um'):
             name = slm + '_' + suffix
@@ -67,6 +73,24 @@ def roi_info(matrix, config, raw_shape):
             'mirrored': bool(np.linalg.det(jacobian) < 0)}
 
 
+def geometry_hardware(hardware):
+    """Geometric identity excludes only photometric camera settings.
+
+    Model calibration still compares the full hardware identity in worker.py.
+    """
+    value=copy.deepcopy(hardware)
+    if not isinstance(value,dict):
+        return value
+    settings=value.get('settings',{})
+    for key in ('ccdExposureSpinBox','ccdGainSpinBox','ccdAutoExposureCheckBox'):
+        settings.pop(key,None)
+    camera=value.get('camera')
+    if isinstance(camera,dict):
+        for key in ('exposure','gain','auto'):
+            camera.pop(key,None)
+    return value
+
+
 def validate_profile(profile, config, hardware=None, raw_shape=None):
     if profile.get('schema') != 1 or profile.get('kind') != 'holography_geometry' or profile.get('validated') is not True:
         raise ValueError('几何标定未通过验证或文件格式无效。')
@@ -75,8 +99,8 @@ def validate_profile(profile, config, hardware=None, raw_shape=None):
     matrix = np.asarray(profile.get('matrix'), float)
     if matrix.shape != (3,3) or not np.isfinite(matrix).all() or np.linalg.matrix_rank(matrix) != 3:
         raise ValueError('几何映射矩阵无效。')
-    if hardware is not None and profile.get('hardware') != hardware:
-        raise ValueError('几何标定的设备、分辨率、ROI、方向或曝光设置与当前会话不同。')
+    if hardware is not None and geometry_hardware(profile.get('hardware')) != geometry_hardware(hardware):
+        raise ValueError('几何标定的设备、分辨率、ROI、方向或显示设置与当前会话不同。')
     shape = profile.get('raw_shape', [])
     if len(shape) != 2 or min(shape) < 4:
         raise ValueError('几何标定缺少原始采集尺寸。')
@@ -120,36 +144,5 @@ def fit_mapping(physical, camera, mode):
     return matrix
 
 
-def locate_spot(raw, background, white):
-    raw = np.asarray(raw)
-    image = raw[...,1] if raw.ndim == 3 else raw
-    base = background[...,1] if background.ndim == 3 else background
-    if image.shape != base.shape or image.ndim != 2 or not np.isfinite(image).all():
-        raise ValueError('采集尺寸改变或包含无效像素。')
-    if np.issubdtype(raw.dtype, np.integer) and white > np.iinfo(raw.dtype).max:
-        raise ValueError('白电平超过相机位深范围。')
-    delta = np.maximum(image.astype(np.float32)-base.astype(np.float32), 0)
-    smooth = cv2.GaussianBlur(delta, (5,5), 1)
-    noise = max(float(np.median(np.abs(smooth-np.median(smooth))))*1.4826, white*1e-4)
-    peak = float(smooth.max())
-    if peak < max(noise*12, white*.005):
-        raise ValueError('定位光斑信号不足；请检查灰度相位方向、照明和传播距离。')
-    mask = np.uint8(smooth > max(peak*.3, noise*8))
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
-    components = []
-    for index in range(1, count):
-        x,y,w,h,area = stats[index]
-        if area < 3:
-            continue
-        weights = delta[y:y+h,x:x+w]*(labels[y:y+h,x:x+w] == index)
-        components.append((float(weights.sum()), index, weights, x,y,w,h))
-    components.sort(key=lambda item: item[0], reverse=True)
-    if not components or (len(components)>1 and components[1][0] > components[0][0]*.45):
-        raise ValueError('多个相近强度光斑或定位不明确，请调整零级光、曝光和光路。')
-    total, index, weights, x,y,w,h = components[0]
-    if x < 2 or y < 2 or x+w > image.shape[1]-2 or y+h > image.shape[0]-2:
-        raise ValueError('定位光斑被相机边界截断。')
-    if np.any(image[y:y+h,x:x+w][weights>0] >= white*.99):
-        raise ValueError('定位光斑过曝，请降低曝光后重试。')
-    yy, xx = np.indices(weights.shape)
-    return [x+float((xx*weights).sum())/total, y+float((yy*weights).sum())/total]
+# Kept here as the geometry API; photometric camera checks remain separate.
+from .spot_detection import locate_spot

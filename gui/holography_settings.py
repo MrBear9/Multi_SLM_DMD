@@ -14,6 +14,11 @@ from ..holography.camera import rectify
 
 
 CONTROLS = {
+    'geometry_detector': ('geometry_detector', ('spot','ring')),
+    'geometry_probe': ('geometry_probe', ('focus','disk','axicon')),
+    'geometry_assistance': ('geometryAssistanceComboBox', ('automatic','manual','on_failure')),
+    'initialization': ('initialization', ('random','gs')),
+    'target_kind': ('target_kind', ('file','cross','frame','asymmetric')),
     'target_fit': ('targetFitModeComboBox', ('contain','cover','stretch')),
     'reference_source': ('referenceSourceComboBox', ('slm','dmd','custom')),
     'sizing_mode': ('targetSizingModeComboBox', ('reference','manual')),
@@ -33,7 +38,7 @@ CONTROLS = {
     'geometry_pattern': ('geometryPatternComboBox', ('sequential','asymmetric')),
     'geometry_tolerance': ('geometryToleranceSpinBox', None),
 }
-STORED_FIELDS = {'sensor_pitch_y_um'}
+STORED_FIELDS = {'sensor_pitch_y_um', 'geometry_search_roi'}
 CUSTOM_SIZE = ('reference_physical_width_um', 'reference_physical_height_um')
 
 
@@ -63,6 +68,8 @@ class HolographySettings(QtCore.QObject):
             signal = (control.currentIndexChanged if isinstance(control,QtWidgets.QComboBox) else
                       control.toggled if isinstance(control,QtWidgets.QCheckBox) else control.valueChanged)
             signal.connect(lambda _, k=name: self.changed(k))
+        for name in ('geometry_axicon_period_um','geometry_probe_radius_um'):
+            getattr(u,name).valueChanged.connect(lambda _: self.changed())
         for name in ('camera_center_x','camera_center_y','camera_angle_deg','camera_pitch_um','camera_flip_x','camera_flip_y'):
             control = getattr(u,name)
             signal = control.toggled if isinstance(control,QtWidgets.QCheckBox) else control.valueChanged
@@ -88,7 +95,8 @@ class HolographySettings(QtCore.QObject):
         self.changed()
 
     def values(self):
-        result = {'geometry_profile':self.profile, 'sensor_pitch_y_um':self.sensor_y_um}
+        result = {'geometry_profile':self.profile, 'sensor_pitch_y_um':self.sensor_y_um,
+                  'geometry_search_roi':self.search_roi}
         for key, (name, choices) in CONTROLS.items():
             control = getattr(self.ui,name)
             result[key] = choices[control.currentIndex()] if choices else control.value()
@@ -99,6 +107,7 @@ class HolographySettings(QtCore.QObject):
         self.loading = True
         try:
             self.profile = dict(config.geometry_profile)
+            self.search_roi = dict(config.geometry_search_roi)
             self.sensor_y_um = config.sensor_pitch_y_um
             # Preserve exact physical values in previously saved configurations.
             # Only an explicit pixel/pitch edit recomputes them from UI values.
@@ -166,12 +175,44 @@ class HolographySettings(QtCore.QObject):
             if self.last_geometry_signature is not None and current_signature != self.last_geometry_signature:
                 u.mapping_confirmed.setChecked(False)
             self.last_geometry_signature = current_signature
+            self.update_bandwidth(config)
+            u.update_grid_report()
+            rect=self.search_roi.get('roi')
+            u.geometrySearchLabel.setText('搜索：整个原始画面' if not rect else
+                f"搜索 ROI：({rect['x']}, {rect['y']})，{rect['width']}×{rect['height']} px；需包含全部定位点")
         finally:
             self.loading = False
         self.update_controls()
         self.preview_timer.start(150)
         self.update_profile_status()
         self.update_camera()
+
+    def update_bandwidth(self, config):
+        from ..holography.geometry_limits import bandwidth_report
+        u=self.ui
+        try:
+            report=bandwidth_report(config)
+            status='通过' if report['fits'] else '超限'
+            u.bandwidthLabel.setText(f'定位采样：{report["peak"]:.3f} 周期/像素（限值 0.48，{status}）；'
+                f'保持当前比例的最大视野估算：{report["max_width_um"]:.1f}×{report["max_height_um"]:.1f} μm。')
+            u.fitGeometryRangeButton.setEnabled(not u.controller.active and not report['fits'])
+        except (ValueError, ZeroDivisionError):
+            u.bandwidthLabel.setText('请选择单 SLM，并填写有效的波长、距离、口径与目标尺寸。')
+            u.fitGeometryRangeButton.setEnabled(False)
+
+    def fit_geometry_range(self):
+        from ..holography.geometry_limits import bandwidth_report
+        c=self.ui.values().resolve_target_size();r=bandwidth_report(c);u=self.ui
+        if r['fits']:
+            return
+        if min(r['safe_width_um'],r['safe_height_um'])<max(u.target_width_um.minimum(),u.target_height_um.minimum()):
+            raise ValueError('即使目标缩到中心，当前口径与距离仍无法满足采样限制；请减小有效口径或调整实际传播距离。')
+        with QtCore.QSignalBlocker(u.targetSizingModeComboBox), QtCore.QSignalBlocker(u.target_width_um), QtCore.QSignalBlocker(u.target_height_um):
+            u.targetSizingModeComboBox.setCurrentIndex(1)
+            u.target_width_um.setValue(r['safe_width_um'])
+            u.target_height_um.setValue(r['safe_height_um'])
+        self.changed()
+        u.log.appendPlainText('已按原比例缩小目标物理视野，并在带宽边界内保留 2% 尺寸余量；请重新进行几何标定。')
 
     def read_camera(self):
         u = self.ui
@@ -214,6 +255,11 @@ class HolographySettings(QtCore.QObject):
     def update_controls(self):
         u = self.ui
         running = u.controller.active
+        ring=u.geometry_detector.currentIndex()==1
+        u.geometry_spot_max_fwhm.setEnabled(not ring)
+        u.geometry_ring_radius.setEnabled(ring)
+        u.geometry_probe_radius_um.setEnabled(u.geometry_probe.currentIndex()==1)
+        u.geometry_axicon_period_um.setEnabled(u.geometry_probe.currentIndex()==2)
         reference = u.referenceSourceComboBox.currentIndex()
         automatic = u.targetSizingModeComboBox.currentIndex()==0
         for name in ('referenceWidthSpinBox','referenceHeightSpinBox'):
@@ -233,6 +279,9 @@ class HolographySettings(QtCore.QObject):
         u.group1.setEnabled(True)  # Capture parameters also govern the geometry button.
         u.cameraCenterButton.setEnabled(not running)
         u.manualMappingGroup.setTitle('手动映射（编辑后退出实测矩阵）')
+        file_target=u.target_kind.currentIndex()==0
+        for name in ('target','targetBrowse','targetFitModeComboBox'):
+            getattr(u,name).setEnabled(file_target and u.operation.currentIndex()!=2)
 
     def current_hardware(self):
         w = self.ui.controller.window
@@ -304,11 +353,18 @@ class HolographySettings(QtCore.QObject):
         u = self.ui
         try:
             config = u.values().resolve_target_size()
-            with Image.open(config.target) as image:
-                u.inputImageSizeDisplay.setText(f'{image.width} × {image.height} px')
-                image.thumbnail((1200,1200))
-                u.pixmaps['input'] = self.pixmap(np.asarray(image.convert('L')))
-            u.pixmaps['adapted'] = self.pixmap(prepare_target(config)*255)
+            scale=min(1.,1200/max(config.output_width,config.output_height))
+            preview_config=replace(config,output_width=max(1,round(config.output_width*scale)),
+                                   output_height=max(1,round(config.output_height*scale)))
+            if config.target_kind=='file':
+                with Image.open(config.target) as image:
+                    u.inputImageSizeDisplay.setText(f'{image.width} × {image.height} px')
+                    image.thumbnail((1200,1200))
+                    u.pixmaps['input'] = self.pixmap(np.asarray(image.convert('L')))
+            else:
+                u.inputImageSizeDisplay.setText(f'内置目标：{config.output_width} × {config.output_height} px')
+                u.pixmaps['input']=self.pixmap(prepare_target(preview_config)*255)
+            u.pixmaps['adapted'] = self.pixmap(prepare_target(preview_config)*255)
         except (OSError,ValueError,ZeroDivisionError):
             u.inputImageSizeDisplay.setText('未读取到有效图像')
             u.pixmaps.pop('input',None)

@@ -10,12 +10,16 @@ from PyQt5 import QtCore, QtWidgets
 from .configuration import input_path, read_values
 from ..devices.zkwx_slm import controller as images
 
+HOLOGRAPHY_PATTERNS = {'聚焦 / 菲涅尔': 'focus', '圆形相位区': 'disk', '轴锥': 'axicon'}
+MANUAL_FRESNEL = '菲涅尔（手动周期）'
+
 
 class LiveInputs:
     def __init__(self, window):
         self.window = window
         self.directory = None
         self.tests = {}
+        self.manual_periods = {}
         for key in ('dmd', 'slm1', 'slm2'):
             getattr(window, key + 'ImportImagesButton').clicked.connect(partial(self.choose_inputs, key))
             getattr(window, key + 'TestPatternButton').clicked.connect(partial(self.choose_test, key))
@@ -190,15 +194,46 @@ class LiveInputs:
         w = self.window
         menu = QtWidgets.QMenu(w)
         actions = {menu.addAction(name): name for name in ('全黑', '全白', '棋盘格')}
+        configure = None
+        manual = None
+        if key in ('slm1','slm2'):
+            menu.addSeparator()
+            for name in HOLOGRAPHY_PATTERNS:
+                action=menu.addAction(name)
+                action.setToolTip('读取全息标定当前参数，生成目标中心的探测相位；按有效尺寸居中显示。')
+                actions[action]=name
+            manual=menu.addAction(MANUAL_FRESNEL+'…')
+            configure=menu.addAction('全息参数设置…')
+            menu.addSeparator()
         restore = menu.addAction('恢复当前输入图像')
         restore.setEnabled(bool(w.paths[key]))
         action = menu.exec_(getattr(w, key + 'TestPatternButton').mapToGlobal(QtCore.QPoint(0, 0)))
-        if action == restore:
+        if manual is not None and action == manual:
+            w.guard(partial(self.choose_manual_fresnel,key))
+        elif configure is not None and action == configure:
+            w.guard(w.holography.open)
+        elif action == restore:
             w.guard(partial(self.restore_input, key))
         elif action in actions:
             w.guard(partial(self.show_test, key, actions[action]))
 
-    def show_test(self, key, name, initialize=False, restoring=False):
+    def choose_manual_fresnel(self,key):
+        self.check_idle()
+        w=self.window
+        # Keep this input local to the test menu. Holography distances, pattern
+        # selection and saved calibration configuration are never overwritten.
+        value,accepted=QtWidgets.QInputDialog.getDouble(w,key.upper()+' · 手动菲涅尔',
+            '周期参数 P / px：中心至首个 2π 相位环的半径。\n'
+            'P 越大，环纹越疏；各圈间隔不相等。\n'
+            '读取全息有效宽高和灰度方向；仅用于测试，不修改标定距离。\n'
+            '此定义不保证与 Magic 软件的“周期”数值相同。',
+            self.manual_periods.get(key,85.),1.,10000.,2)
+        if not accepted:
+            return
+        self.show_test(key,MANUAL_FRESNEL,manual_period=value)
+        self.manual_periods[key]=value
+
+    def show_test(self, key, name, initialize=False, restoring=False, manual_period=None):
         if not restoring:
             self.check_idle()
         w = self.window
@@ -209,7 +244,24 @@ class LiveInputs:
             self.directory = tempfile.TemporaryDirectory(prefix='optical_test_')
         display = w.devices[key].display
         path = Path(self.directory.name) / f'{key}_{uuid4().hex}.bmp'
-        image = Image.new('L', (display.width, display.height), 255 if name == '全白' else 0)
+        description=name
+        if name in HOLOGRAPHY_PATTERNS or name==MANUAL_FRESNEL:
+            from ..holography.probe_phase import focus_phase, manual_fresnel_phase
+            config=w.holography.phase_test_config(key,HOLOGRAPHY_PATTERNS.get(name,'focus'))
+            h,width=config.shape(key)
+            if width>display.width or h>display.height:
+                raise ValueError(f'{key.upper()} 全息有效区域超出当前面板，请在全息参数中调整。')
+            if name==MANUAL_FRESNEL:
+                if manual_period is None:
+                    raise ValueError('请从测试菜单输入手动菲涅尔周期。')
+                image=Image.fromarray(manual_fresnel_phase(config,manual_period))
+                description=f'{name} · P={manual_period:g} px'
+            else:
+                image=Image.fromarray(focus_phase(config,(0.,0.)))
+        elif name in ('全黑','全白','棋盘格'):
+            image = Image.new('L', (display.width, display.height), 255 if name == '全白' else 0)
+        else:
+            raise ValueError('未知测试图案：'+name)
         if name == '棋盘格':
             draw = ImageDraw.Draw(image)
             for y in range(0, image.height, 64):
@@ -222,9 +274,9 @@ class LiveInputs:
         prepared = w.prepare_frame(key, 0, values, path=path)
         w.devices[key].show(path, values, calibration=True)
         w.publish_frame(key, prepared)
-        self.tests[key] = (name, path)
+        self.tests[key] = (description, path)
         getattr(w, key + 'FrameInfoLabel').setText(
-            '未加载输入图像 · 全屏零灰度' if initialize else f'测试图案：{name} · 未触发采集')
+            '未加载输入图像 · 全屏零灰度' if initialize else f'测试图案：{description} · 未触发采集')
         w.update_actions()
 
     @staticmethod
@@ -245,8 +297,17 @@ class LiveInputs:
 
     def restore_display(self, key, values):
         w = self.window
-        if key in self.tests or not w.paths[key]:
-            self.show_test(key, self.tests.get(key, ('全黑', None))[0], restoring=True)
+        if key in self.tests:
+            # Restore the exact displayed pattern, even if holography parameters
+            # have since changed. Regeneration is an explicit menu action.
+            name,path=self.tests[key]
+            values=self.test_values(key,values)
+            prepared=w.prepare_frame(key,0,values,path=path)
+            w.devices[key].show(path,values,calibration=True)
+            w.publish_frame(key,prepared)
+            getattr(w,key+'FrameInfoLabel').setText(f'测试图案：{name} · 未触发采集')
+        elif not w.paths[key]:
+            self.show_test(key,'全黑',restoring=True)
         else:
             path = w.paths[key][w.indices[key]]
             w.devices[key].show(path, values, calibration=True)

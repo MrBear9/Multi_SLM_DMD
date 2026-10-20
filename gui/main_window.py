@@ -21,7 +21,7 @@ from ..devices.dvp2_camera.controller import camera_identity
 from ..utils.paths import TOOLS_ROOT
 from ..utils.image_transforms import ImageTransform
 from ..utils.dmd_images import DmdImageOptions, prepare_image
-from .configuration import (read_values, apply_values, read_configuration,
+from .configuration import (editors, read_values, apply_values, read_configuration,
                             write_configuration, input_path, pil_image_qimage,
                             camera_qimage, set_preview)
 from .dmd_backends import DMD_BACKENDS, selected_dmd, create_display
@@ -44,6 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
                  camera_factory=CameraWorker):
         super().__init__()
         uic.loadUi(str(TOOLS_ROOT / 'ui' / 'MainWindow.ui'), self)
+        self._configuration_editors = editors(self)
         self.ccd_default_ranges = [(w.minimum(), w.maximum()) for w in
                                   (self.ccdExposureSpinBox, self.ccdGainSpinBox)]
         self.ccd_default_title = self.ccdTitleLabel.text()

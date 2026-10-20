@@ -27,13 +27,14 @@ class ASM(nn.Module):
         kernel = torch.polar(mask.double(), 2 * math.pi * z * k2.clamp_min(0).sqrt())
         self.register_buffer('kernel', kernel.to(torch.complex64))
 
-    def forward(self, field):
+    def forward(self, field, adjoint=False):
         height, width = self.shape
         if tuple(field.shape[-2:]) != self.shape:
             raise ValueError('输入光场尺寸与 ASM 网格不一致。')
         top, left = height // 2, width // 2
         padded = F.pad(field, (left, width - left, top, height - top))
-        result = torch.fft.ifft2(torch.fft.fft2(padded) * self.kernel)
+        kernel = self.kernel.conj() if adjoint else self.kernel
+        result = torch.fft.ifft2(torch.fft.fft2(padded) * kernel)
         return result[..., top:top+height, left:left+width]
 
 
@@ -96,24 +97,33 @@ class OpticalModel(nn.Module):
         curve = self.lut(key)
         return curve[index] + (curve[index+1]-curve[index]) * (position-index)
 
-    def forward(self, gray_maps):
+    def transmission(self, gray, key):
+        phase = self.phase(gray, key)
+        zero = self.phase(phase.new_zeros(()), key)
+        phasor = torch.exp(1j*(phase-zero))
+        grid = getattr(self, key + '_grid')
+        real = F.grid_sample(phasor.real-1, grid, mode='bilinear', align_corners=False) + 1
+        imag = F.grid_sample(phasor.imag, grid, mode='bilinear', align_corners=False)
+        aberration = (self.aberrations[key][:, None, None] * getattr(self, key+'_basis')).sum(0)
+        return torch.complex(real, imag) * torch.exp(1j*aberration*getattr(self,key+'_aperture'))
+
+    def propagated_field(self, gray_maps, return_incident=False):
         amp = torch.exp(F.interpolate(self.source_log.clamp(-2, 2), size=self.config.grid_shape,
                                       mode='bilinear', align_corners=False))
         first = self.config.active_slms[0]
         mask = getattr(self, first + '_aperture')
         amp = amp / ((amp*mask).sum() / mask.sum()).clamp_min(1e-8)
         field = (amp*mask).to(torch.complex64)
+        incident = {}
         for key in self.config.active_slms:
-            # The same grey-zero reference is used outside the active phase map.
-            phase = self.phase(gray_maps[key], key)
-            zero = self.phase(phase.new_zeros(()), key)
-            phasor = torch.exp(1j*(phase-zero))
-            grid = getattr(self, key + '_grid')
-            real = F.grid_sample(phasor.real-1, grid, mode='bilinear', align_corners=False) + 1
-            imag = F.grid_sample(phasor.imag, grid, mode='bilinear', align_corners=False)
-            aberration = (self.aberrations[key][:, None, None] * getattr(self, key+'_basis')).sum(0)
-            field = field * torch.complex(real, imag) * torch.exp(1j*aberration*getattr(self,key+'_aperture'))
+            if return_incident:
+                incident[key] = field
+            field = field * self.transmission(gray_maps[key], key)
             field = self.propagators[key](field)
+        return (field, incident) if return_incident else field
+
+    def forward(self, gray_maps):
+        field = self.propagated_field(gray_maps)
         return F.grid_sample(field.abs().square(), self.output_grid, mode='bilinear', align_corners=False)
 
     def regularization(self):

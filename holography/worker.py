@@ -31,7 +31,8 @@ def run(job, rpc=None):
     def request(payload):
         if rpc is not None:
             return rpc(payload)
-        emit('capture', **payload)
+        payload = dict(payload)
+        emit(payload.pop('request_type', 'capture'), **payload)
         line = sys.stdin.readline()
         if not line:
             raise InterruptedError('硬件会话已关闭。')
@@ -52,6 +53,9 @@ def run(job, rpc=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     emit('log', message=f'独立训练进程：{device}；模式 {config.mode}；'
          f'ASM {config.grid_width}×{config.grid_height}，FFT {2*config.grid_width}×{2*config.grid_height}')
+    report = config.grid_report()
+    emit('log', message=f'计算视野预留倍率 {config.grid_margin:g}；网格单轴上限 {config.grid_limit}；'
+         f"单个 FFT 复数数组约 {report['fft_array_mib']:.0f} MiB，训练总占用更高。")
     model = OpticalModel(config).to(device)
     emit('log', message=f'目标计算：{config.output_width}×{config.output_height}；'
          f'目标采样：{config.target_width_um/config.output_width:g}×'
@@ -176,7 +180,12 @@ def run(job, rpc=None):
         raise ValueError('目标图不能全黑。')
     save_preview(root/'target.png', target.cpu().numpy())
     emit('preview', path=str(root/'target.png'), kind='target')
-    controls = {k: torch.nn.Parameter(torch.rand(1, 1, *config.control_shape(k), device=device)) for k in config.active_slms}
+    from .initialization import initialize_controls
+    emit('log', message=f'初始化：{config.initialization}；随机相位范围 ±{config.init_range_rad:g} rad')
+    initialized, initialization_info = initialize_controls(model, target, emit)
+    controls = {k: torch.nn.Parameter(value) for k, value in initialized.items()}
+    emit('log', message=f"初始化模拟误差 {initialization_info['initial_loss']:.5f} → "
+         f"{initialization_info['selected_loss']:.5f}；开始 Adam 优化。")
     for key in config.active_slms:
         ch, cw = config.control_shape(key)
         h, w = config.shape(key)
@@ -233,6 +242,7 @@ def run(job, rpc=None):
     emit('preview', path=str(root/'simulation.png'), kind='simulation')
     result = {'schema': 1, 'config': asdict(config), 'paths': paths,
               'loss_history': history, 'verified_camera_loss': final_score,
+              'initialization': initialization_info,
               'hardware': job.get('hardware'), 'model_path': config.model_path}
     (root/'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     emit('result', path=str(root/'result.json'), message='全息相位已导出。' + ('已保存最终实拍验证。' if config.live else '尚未进行实物验证。'))

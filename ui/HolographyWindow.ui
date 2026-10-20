@@ -133,7 +133,7 @@
               <property name="verticalSpacing">
                <number>6</number>
               </property>
-              <item row="0" column="0" colspan="4">
+              <item row="1" column="0" colspan="4">
                <layout class="QHBoxLayout" name="targetFileRow">
                 <item>
                  <widget class="QLabel" name="targetLabel">
@@ -157,14 +157,14 @@
                 </item>
                </layout>
               </item>
-              <item row="1" column="0">
+              <item row="2" column="0">
                <widget class="QLabel" name="inputImageSizeDisplayCaption">
                 <property name="text">
                  <string>输入图像 / px</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="2" column="1">
                <widget class="QLineEdit" name="inputImageSizeDisplay">
                 <property name="readOnly">
                  <bool>true</bool>
@@ -174,14 +174,14 @@
                 </property>
                </widget>
               </item>
-              <item row="1" column="2">
+              <item row="2" column="2">
                <widget class="QLabel" name="targetFitModeComboBoxCaption">
                 <property name="text">
                  <string>图像适配</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="3">
+              <item row="2" column="3">
                <widget class="QComboBox" name="targetFitModeComboBox">
                 <property name="toolTip">
                  <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
@@ -203,14 +203,14 @@
                 </item>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="3" column="0">
                <widget class="QLabel" name="referenceSourceComboBoxCaption">
                 <property name="text">
                  <string>参考来源</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QComboBox" name="referenceSourceComboBox">
                 <property name="toolTip">
                  <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
@@ -235,14 +235,14 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="2">
+              <item row="3" column="2">
                <widget class="QLabel" name="targetSizingModeComboBoxCaption">
                 <property name="text">
                  <string>尺寸设置</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="3">
+              <item row="3" column="3">
                <widget class="QComboBox" name="targetSizingModeComboBox">
                 <property name="toolTip">
                  <string>参数将保存到当前任务；修改光路与成像参数后需重新核验几何映射。</string>
@@ -262,14 +262,14 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QLabel" name="referenceWidthSpinBoxCaption">
                 <property name="text">
                  <string>参考宽度 / px</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <widget class="QDoubleSpinBox" name="referenceWidthSpinBox">
                 <property name="decimals">
                  <number>0</number>
@@ -291,14 +291,14 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="2">
+              <item row="4" column="2">
                <widget class="QLabel" name="referenceHeightSpinBoxCaption">
                 <property name="text">
                  <string>参考高度 / px</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="3">
+              <item row="4" column="3">
                <widget class="QDoubleSpinBox" name="referenceHeightSpinBox">
                 <property name="decimals">
                  <number>0</number>
@@ -320,14 +320,14 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="5" column="0">
                <widget class="QLabel" name="referencePitchSpinBoxCaption">
                 <property name="text">
                  <string>参考像素间距 / μm</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="5" column="1">
                <widget class="QDoubleSpinBox" name="referencePitchSpinBox">
                 <property name="decimals">
                  <number>3</number>
@@ -349,14 +349,14 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="2">
+              <item row="5" column="2">
                <widget class="QLabel" name="reconstructionScaleSpinBoxCaption">
                 <property name="text">
                  <string>重建倍率</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="3">
+              <item row="5" column="3">
                <widget class="QDoubleSpinBox" name="reconstructionScaleSpinBox">
                 <property name="decimals">
                  <number>3</number>
@@ -378,14 +378,14 @@
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="6" column="0">
                <widget class="QLabel" name="customWidthSpinBoxCaption">
                 <property name="text">
                  <string>自定义参考宽 / px</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="1">
+              <item row="6" column="1">
                <widget class="QDoubleSpinBox" name="customWidthSpinBox">
                 <property name="decimals">
                  <number>3</number>
@@ -407,14 +407,14 @@
                 </property>
                </widget>
               </item>
-              <item row="5" column="2">
+              <item row="6" column="2">
                <widget class="QLabel" name="customHeightSpinBoxCaption">
                 <property name="text">
                  <string>自定义参考高 / px</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="3">
+              <item row="6" column="3">
                <widget class="QDoubleSpinBox" name="customHeightSpinBox">
                 <property name="decimals">
                  <number>3</number>
@@ -436,14 +436,14 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="0">
+              <item row="7" column="0">
                <widget class="QLabel" name="target_width_umLabel">
                 <property name="text">
                  <string>目标视野宽度 / μm</string>
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
+              <item row="7" column="1">
                <widget class="QDoubleSpinBox" name="target_width_um">
                 <property name="decimals">
                  <number>3</number>
@@ -462,14 +462,14 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="2">
+              <item row="7" column="2">
                <widget class="QLabel" name="target_height_umLabel">
                 <property name="text">
                  <string>目标视野高度 / μm</string>
                 </property>
                </widget>
               </item>
-              <item row="6" column="3">
+              <item row="7" column="3">
                <widget class="QDoubleSpinBox" name="target_height_um">
                 <property name="decimals">
                  <number>3</number>
@@ -488,7 +488,7 @@
                 </property>
                </widget>
               </item>
-              <item row="7" column="0" colspan="4">
+              <item row="8" column="0" colspan="4">
                <widget class="QLabel" name="targetSizeFormulaLabel">
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -501,7 +501,7 @@
                 </property>
                </widget>
               </item>
-             </layout>
+             <item row="0" column="0" colspan="1"><widget class="QLabel" name="target_kindLabel"><property name="text"><string>目标来源</string></property></widget></item><item row="0" column="1" colspan="1"><widget class="QComboBox" name="target_kind"><item><property name="text"><string>图像文件</string></property></item><item><property name="text"><string>粗线十字</string></property></item><item><property name="text"><string>方框</string></property></item><item><property name="text"><string>非对称 L 与圆点</string></property></item></widget></item><item row="0" column="2" colspan="2"><widget class="QLabel" name="testPatternNote"><property name="text"><string>内置图案直接作为训练目标；支持预览与保存参数。</string></property></widget></item></layout>
              <property name="title">
               <string>输入、物理尺寸与图像适配</string>
              </property>
@@ -823,7 +823,7 @@
                  <number>32</number>
                 </property>
                 <property name="maximum">
-                 <number>4096</number>
+                 <number>16384</number>
                 </property>
                 <property name="value">
                  <number>1152</number>
@@ -846,7 +846,7 @@
                  <number>32</number>
                 </property>
                 <property name="maximum">
-                 <number>4096</number>
+                 <number>16384</number>
                 </property>
                 <property name="value">
                  <number>1152</number>
@@ -869,7 +869,7 @@
                  <number>16</number>
                 </property>
                 <property name="maximum">
-                 <number>1024</number>
+                 <number>4096</number>
                 </property>
                 <property name="value">
                  <number>256</number>
@@ -892,7 +892,7 @@
                  <number>16</number>
                 </property>
                 <property name="maximum">
-                 <number>1024</number>
+                 <number>4096</number>
                 </property>
                 <property name="value">
                  <number>256</number>
@@ -1051,6 +1051,147 @@
                 </property>
                </widget>
               </item>
+              <item row="14" column="0">
+   <widget class="QLabel" name="grid_marginLabel">
+    <property name="text">
+     <string>计算视野预留倍率</string>
+    </property>
+   </widget>
+  </item>
+              <item row="14" column="1">
+   <widget class="QDoubleSpinBox" name="grid_margin">
+    <property name="toolTip">
+     <string>按有效物理尺寸扩展计算视野，同时必须覆盖目标视野；不是重建倍率，也不是 FFT 补零倍率。</string>
+    </property>
+    <property name="decimals">
+     <number>3</number>
+    </property>
+    <property name="minimum">
+     <double>1</double>
+    </property>
+    <property name="maximum">
+     <double>8</double>
+    </property>
+    <property name="value">
+     <double>1.5</double>
+    </property>
+    <property name="keyboardTracking">
+     <bool>false</bool>
+    </property>
+   </widget>
+  </item>
+              <item row="14" column="2">
+   <widget class="QLabel" name="grid_limitLabel">
+    <property name="text">
+     <string>网格单轴上限 / px</string>
+    </property>
+   </widget>
+  </item>
+              <item row="14" column="3">
+   <widget class="QSpinBox" name="grid_limit">
+    <property name="toolTip">
+     <string>用户设置的资源上限，默认 4096；提高上限不保证显存足够。允许最高 16384。</string>
+    </property>
+    <property name="minimum">
+     <number>32</number>
+    </property>
+    <property name="maximum">
+     <number>16384</number>
+    </property>
+    <property name="value">
+     <number>4096</number>
+    </property>
+    <property name="keyboardTracking">
+     <bool>false</bool>
+    </property>
+   </widget>
+  </item>
+              <item row="15" column="0">
+   <widget class="QLabel" name="initializationLabel">
+    <property name="text">
+     <string>相位初始化</string>
+    </property>
+   </widget>
+  </item>
+              <item row="15" column="1">
+   <widget class="QComboBox" name="initialization">
+    <item>
+     <property name="text">
+      <string>随机相位</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>GS 初始化</string>
+     </property>
+    </item>
+   </widget>
+  </item>
+              <item row="15" column="2">
+   <widget class="QLabel" name="init_range_radLabel">
+    <property name="text">
+     <string>随机相位半范围 / rad</string>
+    </property>
+   </widget>
+  </item>
+              <item row="15" column="3">
+   <widget class="QDoubleSpinBox" name="init_range_rad">
+    <property name="toolTip">
+     <string>以中间灰度对应相位为中心，在 −此值～+此值范围随机初始化；0 为平相位。GS 也从此范围开始，不限制最终相位。</string>
+    </property>
+    <property name="decimals">
+     <number>6</number>
+    </property>
+    <property name="minimum">
+     <double>0</double>
+    </property>
+    <property name="maximum">
+     <double>3.141593</double>
+    </property>
+    <property name="value">
+     <double>3.141593</double>
+    </property>
+    <property name="keyboardTracking">
+     <bool>false</bool>
+    </property>
+   </widget>
+  </item>
+              <item row="16" column="0">
+   <widget class="QLabel" name="gs_iterationsLabel">
+    <property name="text">
+     <string>GS 初始化迭代数</string>
+    </property>
+   </widget>
+  </item>
+              <item row="16" column="1">
+   <widget class="QSpinBox" name="gs_iterations">
+    <property name="toolTip">
+     <string>先做目标振幅约束与反向传播，再进入 Adam；双 SLM 依次投影。保留模拟误差最小的起点，不保证实物改善。</string>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>1000</number>
+    </property>
+    <property name="value">
+     <number>30</number>
+    </property>
+    <property name="keyboardTracking">
+     <bool>false</bool>
+    </property>
+   </widget>
+  </item>
+              <item row="17" column="0" colspan="4">
+   <widget class="QLabel" name="gridResourceLabel">
+    <property name="text">
+     <string />
+    </property>
+    <property name="wordWrap">
+     <bool>true</bool>
+    </property>
+   </widget>
+  </item>
               <property name="verticalSpacing">
                <number>6</number>
               </property>
@@ -1586,7 +1727,7 @@
               <property name="verticalSpacing">
                <number>6</number>
               </property>
-             </layout>
+             <item row="3" column="0" colspan="2"><widget class="QCheckBox" name="stage_exposure_enabled"><property name="text"><string>按阶段固定曝光</string></property><property name="toolTip"><string>勾选后：几何标定采用标定曝光，模型标定/相机回环采用重建曝光。任务结束恢复原曝光。未勾选时使用主界面当前固定曝光。</string></property></widget></item><item row="3" column="2" colspan="2"><widget class="QPushButton" name="applyPreviewExposureButton"><property name="text"><string>应用重建预览曝光</string></property><property name="toolTip"><string>仅任务空闲时应用，关闭自动曝光。</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="4" column="0" colspan="1"><widget class="QLabel" name="geometry_exposure_usLabel"><property name="text"><string>几何标定曝光 / μs</string></property></widget></item><item row="4" column="1" colspan="1"><widget class="QDoubleSpinBox" name="geometry_exposure_us"><property name="decimals"><number>3</number></property><property name="minimum"><double>0.001</double></property><property name="maximum"><double>150000000</double></property><property name="value"><double>150</double></property><property name="keyboardTracking"><bool>false</bool></property></widget></item><item row="4" column="2" colspan="2"><widget class="QPushButton" name="readGeometryExposureButton"><property name="text"><string>读取当前曝光</string></property><property name="toolTip"><string>从相机 SDK 读取最近报告的曝光值，仅填写参数。</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="5" column="0" colspan="1"><widget class="QLabel" name="reconstruction_exposure_usLabel"><property name="text"><string>重建与回环曝光 / μs</string></property></widget></item><item row="5" column="1" colspan="1"><widget class="QDoubleSpinBox" name="reconstruction_exposure_us"><property name="decimals"><number>3</number></property><property name="minimum"><double>0.001</double></property><property name="maximum"><double>150000000</double></property><property name="value"><double>10000</double></property><property name="keyboardTracking"><bool>false</bool></property></widget></item><item row="5" column="2" colspan="2"><widget class="QPushButton" name="readReconstructionExposureButton"><property name="text"><string>读取当前曝光</string></property><property name="toolTip"><string>从相机 SDK 读取最近报告的曝光值，仅填写参数。</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="6" column="0" colspan="4"><widget class="QLabel" name="exposureStageNote"><property name="text"><string>先在重建预览中调好亮度，再读取曝光并固定用于回环；运行中不自动调曝光。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item></layout>
              <property name="title">
               <string>现有采集参数</string>
              </property>
@@ -1795,7 +1936,7 @@
                 </item>
                </layout>
               </item>
-             </layout>
+             <item row="3" column="0" colspan="4"><widget class="QLabel" name="bandwidthLabel"><property name="text"><string>计算定位相位带宽…</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item row="4" column="0" colspan="2"><widget class="QPushButton" name="fitGeometryRangeButton"><property name="text"><string>调整到可标定范围</string></property><property name="toolTip"><string>只缩小目标物理宽高，保持比例并切换为手动尺寸；不改变实际距离或 SLM 有效口径。</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="4" column="2" colspan="2"><widget class="QLabel" name="bandwidthNote"><property name="text"><string>仅检查当前聚焦定位相位的采样限制；不保证相机覆盖或光斑不过曝。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item row="5" column="0"><widget class="QLabel" name="geometry_spot_max_fwhmLabel"><property name="text"><string>光斑最大半高全宽 / px</string></property></widget></item><item row="5" column="1"><widget class="QDoubleSpinBox" name="geometry_spot_max_fwhm"><property name="toolTip"><string>0 为自动：原始帧短边的 4%，限制在 12～160 px；不是搜索 ROI 大小。</string></property><property name="decimals"><number>2</number></property><property name="minimum"><double>0</double></property><property name="maximum"><double>512</double></property><property name="value"><double>0</double></property><property name="keyboardTracking"><bool>false</bool></property></widget></item><item row="5" column="2"><widget class="QLabel" name="geometry_spot_stabilityLabel"><property name="text"><string>中心稳定性限值 / px</string></property></widget></item><item row="5" column="3"><widget class="QDoubleSpinBox" name="geometry_spot_stability"><property name="toolTip"><string>同时用于外围拟合稳定性与重复采集的位置变化检查；独立于映射验证容差。</string></property><property name="decimals"><number>2</number></property><property name="minimum"><double>0.05</double></property><property name="maximum"><double>10</double></property><property name="value"><double>1</double></property><property name="keyboardTracking"><bool>false</bool></property></widget></item><item row="6" column="0"><widget class="QLabel" name="geometry_repeatsLabel"><property name="text"><string>每点重复采集次数</string></property></widget></item><item row="6" column="1"><widget class="QSpinBox" name="geometry_repeats"><property name="toolTip"><string>每次仍使用采集平均帧数；1 次会跳过跨采集稳定性检查，默认 2 次。</string></property><property name="minimum"><number>1</number></property><property name="maximum"><number>5</number></property><property name="value"><number>2</number></property><property name="keyboardTracking"><bool>false</bool></property></widget></item><item row="6" column="2" colspan="2"><widget class="QLabel" name="geometrySpotNote"><property name="text"><string>允许有限中心饱和；需有完整、稳定的未饱和外围。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item row="7" column="0" colspan="2"><widget class="QPushButton" name="useGeometrySearchRoiButton"><property name="text"><string>读取第三页 ROI 为搜索区域</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="7" column="2" colspan="2"><widget class="QPushButton" name="clearGeometrySearchRoiButton"><property name="text"><string>清除搜索区域</string></property><property name="autoDefault"><bool>false</bool></property></widget></item><item row="8" column="0" colspan="4"><widget class="QLabel" name="geometrySearchLabel"><property name="text"><string>搜索：整个原始画面</string></property><property name="wordWrap"><bool>true</bool></property><property name="toolTip"><string>读取前在第三页画框；不改变硬件 ROI 或最终目标 ROI。此固定框需包含全部定位点。逐点辅助的临时框只用于当前点，不覆盖此设置。</string></property></widget></item><item row="9" column="0"><widget class="QLabel" name="geometryAssistanceLabel"><property name="text"><string>定位辅助</string></property></widget></item><item row="9" column="1" colspan="3"><widget class="QComboBox" name="geometryAssistanceComboBox"><property name="toolTip"><string>逐点辅助：首次采集后暂停，到第三页框选当前光斑。重复采集复用该框；识别失败可重框或调整曝光重拍。框只限制搜索，不代替精确拟合。</string></property><item><property name="text"><string>全自动</string></property></item><item><property name="text"><string>逐点手动辅助</string></property></item><item><property name="text"><string>自动定位，失败时手动辅助</string></property></item></widget></item><item row="10" column="0" colspan="1"><widget class="QLabel" name="geometry_detectorLabel"><property name="text"><string>中心识别</string></property></widget></item><item row="10" column="1" colspan="1"><widget class="QComboBox" name="geometry_detector"><item><property name="text"><string>紧凑亮斑</string></property></item><item><property name="text"><string>圆环 / 径向对称中心</string></property></item></widget></item><item row="10" column="2" colspan="1"><widget class="QLabel" name="geometry_probeLabel"><property name="text"><string>探测相位</string></property></widget></item><item row="10" column="3" colspan="1"><widget class="QComboBox" name="geometry_probe"><item><property name="text"><string>聚焦 / 菲涅尔</string></property></item><item><property name="text"><string>圆形相位区（非振幅孔径）</string></property></item><item><property name="text"><string>轴锥</string></property></item></widget></item><item row="11" column="0" colspan="1"><widget class="QLabel" name="geometry_ring_radiusLabel"><property name="text"><string>圆环分析半径 / px</string></property></widget></item><item row="11" column="1" colspan="1"><widget class="QDoubleSpinBox" name="geometry_ring_radius"><property name="minimum"><double>12</double></property><property name="maximum"><double>1024</double></property><property name="value"><double>100</double></property><property name="decimals"><number>3</number></property><property name="keyboardTracking"><bool>false</bool></property><property name="toolTip"><string>原始相机像素；围绕粗框中心使用完整内圈，自动限制在框内。不是光斑半高全宽。</string></property></widget></item><item row="11" column="2" colspan="1"><widget class="QLabel" name="geometry_probe_radius_umLabel"><property name="text"><string>圆形相位区半径 / μm</string></property></widget></item><item row="11" column="3" colspan="1"><widget class="QDoubleSpinBox" name="geometry_probe_radius_um"><property name="minimum"><double>1</double></property><property name="maximum"><double>10000</double></property><property name="value"><double>300</double></property><property name="decimals"><number>3</number></property><property name="keyboardTracking"><bool>false</bool></property><property name="toolTip"><string>固定在 SLM 中心；相位差 π，边缘平滑四个硬件像素。通过相位斜坡移动衍射图形。</string></property></widget></item><item row="12" column="0" colspan="1"><widget class="QLabel" name="geometry_axicon_period_umLabel"><property name="text"><string>轴锥径向周期 / μm</string></property></widget></item><item row="12" column="1" colspan="1"><widget class="QDoubleSpinBox" name="geometry_axicon_period_um"><property name="minimum"><double>1</double></property><property name="maximum"><double>10000</double></property><property name="value"><double>85</double></property><property name="decimals"><number>3</number></property><property name="keyboardTracking"><bool>false</bool></property><property name="toolTip"><string>径向相位每 2π 对应的物理距离；不是焦距。</string></property></widget></item><item row="12" column="2" colspan="1"><widget class="QLabel" name="geometry_exposure_targetLabel"><property name="text"><string>曝光亮度目标 / 满量程</string></property></widget></item><item row="12" column="3" colspan="1"><widget class="QDoubleSpinBox" name="geometry_exposure_target"><property name="minimum"><double>0.2</double></property><property name="maximum"><double>0.85</double></property><property name="value"><double>0.65</double></property><property name="decimals"><number>3</number></property><property name="keyboardTracking"><bool>false</bool></property><property name="toolTip"><string>探测图案的平滑峰值目标；曝光值不是定位检测阈值。</string></property></widget></item><item row="13" column="0" colspan="2"><widget class="QCheckBox" name="geometry_auto_exposure"><property name="text"><string>标定前自动准备曝光并锁定</string></property><property name="checked"><bool>false</bool></property></widget></item><item row="13" column="2" colspan="2"><widget class="QCheckBox" name="geometry_movement_check"><property name="text"><string>先检查中心、左右、上下移动</string></property><property name="checked"><bool>true</bool></property></widget></item><item row="14" column="0" colspan="4"><widget class="QLabel" name="geometryRingNote"><property name="text"><string>圆环模式需粗框中心及数圈完整环纹；可用逐点辅助。圆形相位区与轴锥采用固定图案加相位斜坡，需实测移动及独立验证。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item></layout>
             </widget>
            </item>
            <item>

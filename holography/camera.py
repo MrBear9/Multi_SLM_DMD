@@ -22,8 +22,10 @@ def rectify(image, config):
     if mx.min() < 1 or my.min() < 1 or mx.max() > signal.shape[1]-2 or my.max() > signal.shape[0]-2:
         raise ValueError('目标观察区域超出相机画面，请修正中心或减小目标物理视野；不会补造缺失区域。')
     observed = cv2.remap(signal.astype(np.float32), mx.astype(np.float32), my.astype(np.float32), cv2.INTER_LINEAR)
-    if np.mean(observed >= config.camera_white*.99) > .01:
-        raise ValueError('目标区域过曝或白电平设置错误，请检查相机原始数据位深及曝光。')
+    saturated_fraction = float(np.mean(observed >= config.camera_white*.99))
+    if saturated_fraction > .01:
+        raise ValueError(f'目标区域过曝或白电平设置错误：近饱和采样占 {saturated_fraction*100:.3f}%，'
+                         f'超过 1%（阈值 {config.camera_white*.99:g}）。请检查原始位深并降低回环曝光。')
     observed = np.maximum(observed-config.camera_dark, 0)
     if observed.mean() < max((config.camera_white-config.camera_dark)*1e-5, 1e-6):
         raise ValueError('目标区域没有足够信号，请检查映射、曝光和光路。')

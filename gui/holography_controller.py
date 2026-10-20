@@ -1,5 +1,5 @@
 """External-process orchestration; hardware remains owned by the main GUI."""
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 import hashlib
 import json
@@ -32,7 +32,7 @@ class HolographyCaptureTask(CalibrationTask):
             path = Path(self.payload['capture_path'])
             np.save(path, image)
             path.with_suffix('.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
-            self.result = {'path': str(path)}
+            self.result = {'path': str(path), 'exposure_us':parameters.get('exposure')}
         except Exception as exc:
             self.error = str(exc)
 
@@ -55,6 +55,7 @@ class HolographyController(QtCore.QObject):
         self.worker_error = ''
         self.received_result = False
         self.geometry_result = None
+        self.point_selection = None
 
     @property
     def active(self):
@@ -64,10 +65,21 @@ class HolographyController(QtCore.QObject):
     def hardware_active(self):
         return self.active and self.config is not None and self.config.live
 
-    def open(self):
+    def ensure_dialog(self):
         from .holography_window import HolographyWindow
         if self.dialog is None:
             self.dialog = HolographyWindow(self)
+        return self.dialog
+
+    def phase_test_config(self, key, probe):
+        if key not in ('slm1','slm2'):
+            raise ValueError('全息探测相位仅用于 SLM。')
+        # Read current edits, including unsaved parameters, without changing the
+        # selected mode/operation or requiring a target image and training Python.
+        return replace(self.ensure_dialog().values(),mode=key,geometry_probe=probe)
+
+    def open(self):
+        self.ensure_dialog()
         self.dialog.show()
         self.dialog.raise_()
         self.dialog.activateWindow()
@@ -85,6 +97,16 @@ class HolographyController(QtCore.QObject):
             config.operation = 'geometry'
             config.geometry_profile = {}
             config.magnification_source = 'manual'
+        if config.operation == 'geometry':
+            from ..holography.geometry_limits import validate_probe_bandwidth
+            validate_probe_bandwidth(config)
+            if config.geometry_search_roi:
+                from ..holography.spot_detection import search_rect
+                hardware=self.hardware_signature()
+                size=hardware.get('camera',{}).get('geometry',{}).get('raw_size',[])
+                if len(size)!=2:
+                    raise ValueError('请连接相机并重新读取第三页定位搜索 ROI。')
+                search_rect(config.geometry_search_roi,size[::-1],hardware)
         config.fit_grid().validate()
         ui.grid_width.setValue(config.grid_width)
         ui.grid_height.setValue(config.grid_height)
@@ -92,7 +114,7 @@ class HolographyController(QtCore.QObject):
         worker = Path(ui.workerPath.text().strip())
         if not python.is_file() or not worker.is_file():
             raise ValueError('请选择外部开发环境的 Python 和 tools/holography/worker.py。')
-        if config.target:
+        if config.target and config.target_kind == 'file':
             config.target = str(Path(config.target).resolve())
         if config.model_path:
             config.model_path = str(Path(config.model_path).resolve())
@@ -105,8 +127,10 @@ class HolographyController(QtCore.QObject):
                 raise ValueError('请等待设备操作完成。')
             if set(config.active_slms)-set(w.devices):
                 raise ValueError('请连接所选 SLM；单层模式不要求另一片连接。')
-            if w.camera_parameters.get('auto', True):
+            if (w.camera_parameters.get('auto', True) and not config.stage_exposure_enabled
+                    and not (config.operation=='geometry' and config.geometry_auto_exposure)):
                 raise ValueError('请在主界面关闭自动曝光并应用参数。')
+            self.validate_exposure(config.exposure_for(w.camera_parameters['exposure']))
             if w.network_dmd() is not None:
                 raise ValueError('首版全息回环请使用固定照明或普通 DMD，暂不管理 F4321。')
             for key in config.active_slms:
@@ -125,12 +149,13 @@ class HolographyController(QtCore.QObject):
             # Preserve SDK precision instead of rewriting rounded UI values.
             self.original['ccdExposureSpinBox'] = w.camera_parameters['exposure']
             self.original['ccdGainSpinBox'] = w.camera_parameters['gain']
+            self.original['ccdAutoExposureCheckBox'] = w.camera_parameters.get('auto',False)
         root = Path(ui.outputPath.text().strip()).resolve() / (datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid4().hex[:6])
         root.mkdir(parents=True, exist_ok=False)
         self.root = root
         self.result_path = None
         self.geometry_result = None
-        hardware = self.hardware_signature() if config.live else None
+        hardware = self.hardware_signature(config.exposure_for(self.original['ccdExposureSpinBox'])) if config.live else None
         job = {'config': asdict(config), 'output': str(root), 'hardware': hardware}
         job_path = root/'job.json'
         job_path.write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -158,8 +183,26 @@ class HolographyController(QtCore.QObject):
         ui.update_controls()
         w.update_actions()
         self.log('开始；结果目录：'+str(root))
+        if config.live:
+            self.log(f'本次固定曝光：{config.exposure_for(self.original["ccdExposureSpinBox"]):g} μs；任务结束恢复原曝光。')
 
-    def hardware_signature(self):
+    def validate_exposure(self, exposure):
+        limits=self.window.camera_parameters.get('exposure_range')
+        if limits and not limits[0] <= exposure <= limits[1]:
+            raise ValueError(f'曝光 {exposure:g} μs 超出当前相机范围 {limits[0]:g}～{limits[1]:g} μs。')
+
+    def apply_preview_exposure(self):
+        w=self.window
+        if self.active or w.calibration.active or w.automation_active:
+            raise ValueError('请等待当前硬件任务结束。')
+        if not w.camera_ready or w.camera is None:
+            raise ValueError('请先连接相机。')
+        exposure=self.dialog.reconstruction_exposure_us.value()
+        self.validate_exposure(exposure)
+        w.camera.submit('parameters',exposure,w.camera_parameters['gain'],False)
+        self.log(f'已请求重建预览曝光 {exposure:g} μs，并关闭自动曝光。')
+
+    def hardware_signature(self, exposure=None):
         w = self.window
         values = read_values(w)
         names = [name for name in values if (name.startswith(('slm1','slm2','dmd','ccd','toupcam'))
@@ -177,7 +220,13 @@ class HolographyController(QtCore.QObject):
                 identity['dmd_sha256'] = hashlib.sha256(bytes(bits)).hexdigest()
         # SDK ranges/ROIs may be tuples; files and worker RPC use JSON lists.
         # Compare one canonical representation before and after a round trip.
-        return json.loads(json.dumps(identity, ensure_ascii=False))
+        identity=json.loads(json.dumps(identity, ensure_ascii=False))
+        if exposure is not None:
+            identity['settings']['ccdExposureSpinBox']=exposure
+            identity['settings']['ccdAutoExposureCheckBox']=False
+            identity['camera']['exposure']=exposure
+            identity['camera']['auto']=False
+        return identity
 
     def safe_path(self, value):
         path = Path(value).resolve()
@@ -232,6 +281,8 @@ class HolographyController(QtCore.QObject):
                 return
             if not self.hardware_active or self.capture_task is not None:
                 raise ValueError('当前任务不允许采集或上一事务尚未完成。')
+            if self.point_selection is not None and self.point_selection.pending is not None:
+                raise ValueError('请先完成当前定位图的框选。')
             paths = message['paths']
             if set(paths) != set(self.config.active_slms):
                 raise ValueError('训练请求与所选 SLM 不一致。')
@@ -250,6 +301,16 @@ class HolographyController(QtCore.QObject):
                         Image.new('L',(display.width,display.height),0).save(path)
                     paths[key] = str(path)
             settings = dict(self.original)
+            settings['ccdExposureSpinBox']=self.config.exposure_for(settings['ccdExposureSpinBox'])
+            if 'exposure_us' in message:
+                if self.config.operation != 'geometry':
+                    raise ValueError('仅几何标定允许辅助重拍曝光。')
+                exposure = float(message['exposure_us'])
+                if not np.isfinite(exposure) or exposure <= 0:
+                    raise ValueError('重拍曝光无效。')
+                self.validate_exposure(exposure)
+                settings['ccdExposureSpinBox'] = exposure
+            settings['ccdAutoExposureCheckBox']=False
             for key in paths:
                 if key not in self.config.active_slms:
                     settings.update({key+'RotationSpinBox':0, key+'HorizontalFlipCheckBox':False,
@@ -260,6 +321,13 @@ class HolographyController(QtCore.QObject):
             task.requested.connect(self.bridge.dispatch)
             task.finished.connect(self.finished_capture)
             task.start()
+        elif kind == 'geometry_select':
+            if self.stopping:
+                return
+            if self.point_selection is None:
+                from .geometry_point_selection import GeometryPointSelection
+                self.point_selection = GeometryPointSelection(self)
+            self.point_selection.begin(message)
 
     def finished_capture(self):
         task = self.capture_task
@@ -293,6 +361,8 @@ class HolographyController(QtCore.QObject):
         if not self.active:
             return
         self.stopping = True
+        if self.point_selection is not None:
+            self.point_selection.finish()
         if self.capture_task is not None:
             self.capture_task.requestInterruption()
         if self.hardware_active and self.window.camera is not None:
@@ -309,11 +379,16 @@ class HolographyController(QtCore.QObject):
     def cleanup(self):
         if self.capture_task is not None:
             return
+        if self.point_selection is not None:
+            self.point_selection.finish()
         success = self.exit_code==0 and self.received_result and not self.worker_error and not self.stopping
         had_hardware = self.original is not None
         if had_hardware:
             try:
                 self.bridge.restore(self.original)
+                if self.window.camera is not None:
+                    self.window.camera.submit('parameters',self.original['ccdExposureSpinBox'],
+                                              self.original['ccdGainSpinBox'],self.original['ccdAutoExposureCheckBox'])
             except Exception as exc:
                 self.worker_error += '；恢复显示失败：'+str(exc)
                 success = False
@@ -382,3 +457,5 @@ class HolographyController(QtCore.QObject):
                 w.synchronizeSlmsCheckBox.setChecked(paired)
             w.update_actions()
         self.log('相位已导入；已连接的所选 SLM 已显示。')
+        if self.dialog.values().stage_exposure_enabled and w.camera_ready:
+            self.apply_preview_exposure()

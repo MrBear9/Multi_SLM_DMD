@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GeometryPointSelection</class>
+ <widget class="QWidget" name="GeometryPointSelection">
+  <layout class="QVBoxLayout" name="layout">
+   <item><widget class="QLabel" name="instruction"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>标定已暂停：请框选当前光斑及完整外围，然后确认。</string></property></widget></item>
+   <item><layout class="QHBoxLayout" name="actions">
+    <item><widget class="QPushButton" name="confirmButton"><property name="text"><string>确认框选并继续</string></property></widget></item>
+    <item><widget class="QLabel" name="exposureLabel"><property name="text"><string>重拍曝光 / μs</string></property></widget></item>
+    <item><widget class="QDoubleSpinBox" name="exposure"><property name="decimals"><number>3</number></property><property name="minimum"><double>0.001</double></property><property name="maximum"><double>1000000000</double></property><property name="keyboardTracking"><bool>false</bool></property></widget></item>
+    <item><widget class="QPushButton" name="recaptureButton"><property name="text"><string>按此曝光重拍</string></property><property name="toolTip"><string>重新采集同曝光背景及当前定位点的全部重复帧；之前的图像保留。</string></property></widget></item>
+    <item><widget class="QPushButton" name="cancelButton"><property name="text"><string>停止标定</string></property></widget></item>
+   </layout></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

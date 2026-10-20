@@ -8,6 +8,7 @@ class HolographyConfig:
     mode: str = 'slm1'
     operation: str = 'generate'
     target: str = ''
+    target_kind: str = 'file'
     model_path: str = ''
     wavelength_nm: float = 532.
     slm1_width: int = 432
@@ -21,7 +22,12 @@ class HolographyConfig:
     inter_slm_mm: float = 200.
     grid_width: int = 1152
     grid_height: int = 1152
+    grid_margin: float = 1.5
+    grid_limit: int = 4096
     sampling_um: float = 4.5
+    initialization: str = 'random'
+    init_range_rad: float = 3.141593  # pi at the UI's six-decimal precision
+    gs_iterations: int = 30
     slm1_controls_width: int = 432
     slm1_controls_height: int = 432
     slm2_controls_width: int = 768
@@ -54,6 +60,19 @@ class HolographyConfig:
     geometry_mapping: str = 'affine'
     geometry_pattern: str = 'sequential'
     geometry_tolerance: float = 2.
+    geometry_spot_max_fwhm: float = 0.
+    geometry_spot_stability: float = 1.
+    geometry_repeats: int = 2
+    geometry_assistance: str = 'automatic'
+    geometry_detector: str = 'spot'
+    geometry_probe: str = 'focus'
+    geometry_auto_exposure: bool = False
+    geometry_exposure_target: float = .65
+    geometry_movement_check: bool = True
+    geometry_ring_radius: float = 100.
+    geometry_probe_radius_um: float = 300.
+    geometry_axicon_period_um: float = 85.
+    geometry_search_roi: dict = field(default_factory=dict)
     geometry_profile: dict = field(default_factory=dict)
     camera_pitch_um: float = 3.76
     camera_center_x: float = 0.
@@ -63,6 +82,9 @@ class HolographyConfig:
     camera_flip_y: bool = False
     camera_dark: float = 0.
     camera_white: float = 255.
+    stage_exposure_enabled: bool = False
+    geometry_exposure_us: float = 150.
+    reconstruction_exposure_us: float = 10000.
     mapping_confirmed: bool = False
     settle_seconds: float = .5
     average_frames: int = 3
@@ -116,6 +138,11 @@ class HolographyConfig:
             self.target_width_um, self.target_height_um = w*self.reconstruction_scale, h*self.reconstruction_scale
         return self
 
+    def exposure_for(self, current):
+        if not self.stage_exposure_enabled:
+            return current
+        return self.geometry_exposure_us if self.operation == 'geometry' else self.reconstruction_exposure_us
+
     def shape(self, key):
         return getattr(self, key + '_height'), getattr(self, key + '_width')
 
@@ -129,24 +156,46 @@ class HolographyConfig:
     def required_grid_extent(self, axis):
         extent = max(getattr(self, k + '_' + axis) * getattr(self, k + '_pitch_um')
                      for k in self.active_slms)
-        return max(1.5 * extent, getattr(self, 'target_' + axis + '_um'))
+        return max(self.grid_margin * extent, getattr(self, 'target_' + axis + '_um'))
+
+    def validate_grid_policy(self):
+        if not math.isfinite(self.grid_margin) or not 1 <= self.grid_margin <= 8:
+            raise ValueError('计算视野预留倍率需要在 1～8 之间。')
+        if type(self.grid_limit) is not int or not 32 <= self.grid_limit <= 16384:
+            raise ValueError('网格单轴上限需要整数 32～16384。')
+
+    def grid_report(self):
+        """Allocation-free estimate; one FFT array is NOT total training memory."""
+        self.validate_grid_policy()
+        if not math.isfinite(self.sampling_um) or self.sampling_um <= 0:
+            raise ValueError('sampling_um 必须是有限正数。')
+        sizes = []
+        for axis in ('width', 'height'):
+            current = getattr(self, 'grid_' + axis)
+            required = self.required_grid_extent(axis) / self.sampling_um
+            sizes.append(current if current >= required else math.ceil(required / 64) * 64)
+        w, h = sizes
+        return {'width': w, 'height': h, 'fits': max(w, h) <= self.grid_limit,
+                'fft_array_mib': (2*w)*(2*h)*8/1024**2}
 
     def fit_grid(self):
         self.resolve_target_size()
-        if not math.isfinite(self.sampling_um) or self.sampling_um <= 0:
-            raise ValueError('sampling_um 必须是有限正数。')
-        for axis in ('width', 'height'):
-            name = 'grid_' + axis
-            extent = self.required_grid_extent(axis)
-            if getattr(self, name) * self.sampling_um < extent:
-                setattr(self, name, math.ceil(extent / self.sampling_um / 64) * 64)
+        report = self.grid_report()
+        if not report['fits']:
+            raise ValueError(f"当前参数需要 ASM 网格 {report['width']}×{report['height']}，"
+                             f'超过所设单轴上限 {self.grid_limit}。请调整采样、预留倍率或有效区域，'
+                             '也可在资源允许时提高网格上限；硬件像素间距应保持真实值。')
+        self.grid_width, self.grid_height = report['width'], report['height']
         return self
 
     def validate(self):
         self.resolve_target_size()
+        self.validate_grid_policy()
         if self.mode not in ('slm1', 'slm2', 'dual') or self.operation not in ('generate', 'feedback', 'calibrate', 'geometry'):
             raise ValueError('未知全息模式或操作。')
         for name, choices in {
+            'initialization': ('random', 'gs'),
+            'target_kind': ('file', 'cross', 'frame', 'asymmetric'),
             'target_fit': ('contain', 'cover', 'stretch'),
             'reference_source': ('slm', 'dmd', 'custom'), 'sizing_mode': ('reference', 'manual'),
             'camera_optical_path': ('direct', 'relay', 'unsupported'),
@@ -154,6 +203,9 @@ class HolographyConfig:
             'magnification_source': ('manual', 'calibrated'),
             'geometry_mapping': ('similarity', 'affine', 'perspective'),
             'geometry_pattern': ('sequential', 'asymmetric'),
+            'geometry_assistance': ('automatic', 'manual', 'on_failure'),
+            'geometry_detector': ('spot', 'ring'),
+            'geometry_probe': ('focus', 'disk', 'axicon'),
         }.items():
             if getattr(self, name) not in choices:
                 raise ValueError('无效选项：' + name)
@@ -170,12 +222,33 @@ class HolographyConfig:
                     'reference_width', 'reference_height', 'reference_pitch_um',
                     'reference_physical_width_um', 'reference_physical_height_um', 'reconstruction_scale',
                     'sensor_pitch_x_um', 'sensor_pitch_y_um', 'binning_x', 'binning_y',
-                    'relay_magnification', 'geometry_tolerance'):
+                    'relay_magnification', 'geometry_tolerance', 'geometry_spot_stability', 'geometry_exposure_us', 'reconstruction_exposure_us'):
             if getattr(self, key) <= 0:
                 raise ValueError(key + ' 必须大于零。')
-        for key, low, high in (('grid_width', 32, 4096), ('grid_height', 32, 4096),
+        if not 0 <= self.init_range_rad <= math.pi + 1e-6:
+            raise ValueError('随机相位半范围需要在 0～π rad 之间；0 表示平相位起点。')
+        if not 0 <= self.geometry_spot_max_fwhm <= 512 or not isinstance(self.geometry_search_roi,dict):
+            raise ValueError('定位光斑最大半高全宽需为 0～512 px，搜索 ROI 必须是有效标注。')
+        if not .05 <= self.geometry_spot_stability <= 10:
+            raise ValueError('定位中心稳定性限值需为 0.05～10 px。')
+        if not .2 <= self.geometry_exposure_target <= .85:
+            raise ValueError('自动曝光目标需要在满量程的 20%～85% 之间。')
+        if not 12 <= self.geometry_ring_radius <= 1024:
+            raise ValueError('圆环分析半径需要在 12～1024 原始相机像素之间。')
+        if self.geometry_probe_radius_um <= 0 or self.geometry_axicon_period_um <= 0:
+            raise ValueError('圆形相位区半径和轴锥周期必须大于零。')
+        if self.geometry_probe != 'focus' and self.geometry_detector != 'ring':
+            raise ValueError('圆形相位区与轴锥探测图案请使用圆环中心检测。')
+        if self.geometry_probe=='disk' and self.mode!='dual':
+            key=self.active_slms[0]
+            radius_limit=(min(self.shape(key))-5)*getattr(self,key+'_pitch_um')/2
+            if self.geometry_probe_radius_um>=radius_limit:
+                raise ValueError(f'圆形相位区半径应小于 {radius_limit:g} μm，以便边缘完整位于有效区域内。')
+        for key, low, high in (('grid_width', 32, self.grid_limit), ('grid_height', 32, self.grid_limit),
+                               ('gs_iterations', 1, 1000),
+                               ('geometry_repeats', 1, 5),
                                ('steps', 1, 20000), ('samples', 8, 1000), ('epochs', 1, 10000),
-                               ('output_width', 16, 1024), ('output_height', 16, 1024), ('average_frames', 1, 100),
+                               ('output_width', 16, 4096), ('output_height', 16, 4096), ('average_frames', 1, 100),
                                ('discard_frames', 0, 100), ('feedback_every', 1, 1000)):
             v = getattr(self, key)
             if type(v) is not int or not low <= v <= high:
@@ -201,7 +274,7 @@ class HolographyConfig:
             raise ValueError('请先载入并应用通过验证的几何标定。')
         if self.live and self.operation != 'geometry' and not self.mapping_confirmed:
             raise ValueError('请确认相机坐标映射、线性输出、固定曝光及黑白电平。')
-        if self.operation not in ('calibrate', 'geometry') and not self.target:
+        if self.operation not in ('calibrate', 'geometry') and self.target_kind == 'file' and not self.target:
             raise ValueError('请选择目标强度图。')
         return self
 

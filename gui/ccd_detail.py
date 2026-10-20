@@ -255,6 +255,8 @@ class CcdDetailController(QtCore.QObject):
         self.window.ccdDetailShowRoiCheckBox.setChecked(True)
 
     def set_frozen(self, frozen):
+        if getattr(self, 'selection_locked', False):
+            frozen = True
         self.frozen = frozen and self.displayed is not None
         self.window.ccdDetailFreezeButton.setText('恢复实时' if self.frozen else '冻结画面')
         if not self.frozen:
@@ -389,3 +391,5 @@ class CcdDetailController(QtCore.QObject):
         w.ccdDetailRoiGroupBox.setEnabled(ready)
         w.ccdDetailRoiClearButton.setEnabled(ready and self.view.roi is not None)
         w.ccdDetailRoiSaveButton.setEnabled(ready and self.view.roi is not None)
+        if getattr(self, 'selection_locked', False):
+            w.ccdDetailFreezeButton.setEnabled(False)

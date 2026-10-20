@@ -56,8 +56,49 @@ class HolographyWindow(QtWidgets.QDialog):
         self.descriptionLabel.setText(self.source_note)
         self.descriptionLabel.setWordWrap(True)
         self.settings = HolographySettings(self)
+        self.useGeometrySearchRoiButton.clicked.connect(lambda: self.guarded(self.use_geometry_search_roi))
+        self.clearGeometrySearchRoiButton.clicked.connect(self.clear_geometry_search_roi)
+        self.fitGeometryRangeButton.clicked.connect(lambda: self.guarded(self.settings.fit_geometry_range))
+        self.applyPreviewExposureButton.clicked.connect(lambda: self.guarded(controller.apply_preview_exposure))
+        self.readGeometryExposureButton.clicked.connect(lambda: self.guarded(lambda: self.read_exposure('geometry_exposure_us')))
+        self.readReconstructionExposureButton.clicked.connect(lambda: self.guarded(lambda: self.read_exposure('reconstruction_exposure_us')))
         self.settings.changed()
+        for name in ('grid_width','grid_height','grid_margin','grid_limit','sampling_um',
+                     'slm1_width','slm1_height','slm1_pitch_um','slm2_width','slm2_height','slm2_pitch_um',
+                     'target_width_um','target_height_um'):
+            getattr(self,name).valueChanged.connect(self.update_grid_report)
+        self.initialization.currentIndexChanged.connect(self.update_controls)
         self.update_controls()
+
+    def use_geometry_search_roi(self):
+        from ..holography.spot_detection import search_rect
+        detail=self.controller.window.ccd_detail
+        if detail.displayed is None or detail.view.roi is None:
+            raise ValueError('请先在第三页 CCD 细节预览中框选搜索区域，再返回读取；区域需包含全部定位点。')
+        r=detail.view.roi
+        document=detail._document(dict(name='几何定位搜索',x=r.x(),y=r.y(),width=r.width(),height=r.height()))
+        document=json.loads(json.dumps(document,ensure_ascii=False))
+        search_rect(document,detail.displayed[0].shape,self.controller.hardware_signature())
+        self.settings.search_roi=document
+        self.settings.changed()
+
+    def clear_geometry_search_roi(self):
+        self.settings.search_roi={}
+        self.settings.changed()
+
+    def update_grid_report(self, *_):
+        if not hasattr(self, 'settings'):
+            return
+        try:
+            config = self.values().resolve_target_size()
+            report = config.grid_report()
+            w, h = report['width'], report['height']
+            status = '；超过所设上限，无法开始' if not report['fits'] else ''
+            self.gridResourceLabel.setText(
+                f'预计网格 {w}×{h}；FFT {2*w}×{2*h}；单个复数数组约 '
+                f"{report['fft_array_mib']:.0f} MiB（训练总占用更高，未检测显存）{status}")
+        except ValueError as exc:
+            self.gridResourceLabel.setText(str(exc))
 
     def event(self, event):
         if event.type() == QtCore.QEvent.EnterWhatsThisMode:
@@ -125,6 +166,13 @@ class HolographyWindow(QtWidgets.QDialog):
         for key in self.values().active_slms:
             for axis in ('width','height'):
                 getattr(self,key+'_controls_'+axis).setValue(getattr(self,key+'_'+axis).value())
+
+    def read_exposure(self, name):
+        window=self.controller.window
+        if not window.camera_ready or 'exposure' not in window.camera_parameters:
+            raise ValueError('请先连接相机并等待曝光参数返回。')
+        getattr(self,name).setValue(window.camera_parameters['exposure'])
+        self.log.appendPlainText('已读取相机当前曝光；任务中将按所选阶段保持固定。')
 
     def match_target_ratio(self):
         config = self.values().resolve_target_size()
@@ -194,6 +242,11 @@ class HolographyWindow(QtWidgets.QDialog):
             for axis in ('width','height'):
                 getattr(self,key+'_controls_'+axis).setEnabled(key in active and self.operation.currentIndex()!=2)
         self.matchControlsButton.setEnabled(self.operation.currentIndex()!=2)
+        optimizing = self.operation.currentIndex()!=2
+        self.initialization.setEnabled(optimizing)
+        self.init_range_rad.setEnabled(optimizing)
+        self.gs_iterations.setEnabled(optimizing and self.initialization.currentIndex()==1)
+        self.update_grid_report()
         self.slm1_distance_mm.setEnabled(self.mode.currentIndex()==0)
         self.slm2_distance_mm.setEnabled(self.mode.currentIndex()!=0)
         self.inter_slm_mm.setEnabled(self.mode.currentIndex()==2)

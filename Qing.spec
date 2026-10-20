@@ -60,6 +60,7 @@ a = Analysis(
     datas=[
         (str(tools_dir / 'ui' / 'MainWindow.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'HolographyWindow.ui'), 'tools/ui'),
+        (str(tools_dir / 'ui' / 'GeometryPointSelection.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'HolographyHelp.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'holography_help.html'), 'tools/ui'),
         (str(tools_dir / 'calibration_config.json'), 'tools'),
@@ -82,6 +83,7 @@ a = Analysis(
         'tools.calibration.resampling',
         'tools.holography.worker',
         'tools.holography.optics',
+        'tools.holography.initialization',
     ],
     noarchive=False,
     optimize=0,

@@ -20,8 +20,14 @@ EDITORS = (QtWidgets.QLineEdit, QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox,
 
 
 def editors(window):
+    # MainWindow registers its Designer controls before creating child dialogs
+    # or transient panels. Their fields must never enter hardware configuration.
+    registered = getattr(window, '_configuration_editors', None)
+    if registered is not None:
+        return registered
     return {w.objectName(): w for cls in EDITORS for w in window.findChildren(cls)
-            if w.objectName() and not w.objectName().startswith('qt_')
+            if w.window() is window.window()
+            and w.objectName() and not w.objectName().startswith('qt_')
             and (not w.objectName().startswith('ccdDetail')
                  or w.objectName() == 'ccdDetailAutoOpenCheckBox')
             and not w.objectName().endswith('FrameSpinBox')}
