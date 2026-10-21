@@ -92,7 +92,11 @@ def geometry_hardware(hardware):
 
 
 def validate_profile(profile, config, hardware=None, raw_shape=None):
-    if profile.get('schema') != 1 or profile.get('kind') != 'holography_geometry' or profile.get('validated') is not True:
+    if profile.get('schema') == 2 and profile.get('local_validated') and not profile.get('target_validation',{}).get('passed'):
+        raise ValueError('局部标定通过，但完整目标边缘尚未验证通过，不能应用于全视野重建。')
+    if profile.get('schema') == 2 and profile.get('local_validated') and profile.get('roi',{}).get('coverage',0)<.99999:
+        raise ValueError('完整重建目标未被 CCD 覆盖，请调整相机端成像倍率或光路；目标尺寸未缩小。')
+    if profile.get('schema') not in (1,2) or profile.get('kind') != 'holography_geometry' or profile.get('validated') is not True:
         raise ValueError('几何标定未通过验证或文件格式无效。')
     if profile.get('signature') != signature(config):
         raise ValueError('几何标定与当前 SLM、距离、目标尺寸或成像设置不一致，请重新标定。')
@@ -115,6 +119,17 @@ def validate_profile(profile, config, hardware=None, raw_shape=None):
     training = np.asarray(profile.get('training_errors_px', []),float)
     if training.size < 6 or not np.isfinite(training).all() or training.max() > config.geometry_tolerance:
         raise ValueError('拟合点误差超过当前允许值。')
+    if profile.get('schema') == 2:
+        from .geometry_limits import target_edge_points
+        edge = profile.get('target_validation',{})
+        physical=np.asarray(edge.get('physical_um',[]),float)
+        measured=np.asarray(edge.get('camera_px',[]),float)
+        if not edge.get('passed') or physical.shape!=(8,2) or measured.shape!=(8,2) or not np.isfinite(measured).all():
+            raise ValueError('完整目标缺少 8 个有效的边缘验证点。')
+        if not np.allclose(physical,target_edge_points(config),rtol=0,atol=1e-6):
+            raise ValueError('边缘验证点与当前完整目标尺寸不一致。')
+        if np.linalg.norm(project(matrix,physical)-measured,axis=1).max()>config.geometry_tolerance:
+            raise ValueError('完整目标边缘验证误差超限。')
     return info
 
 

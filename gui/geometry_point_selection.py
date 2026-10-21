@@ -68,6 +68,11 @@ class GeometryPointSelection:
                if c.config.geometry_detector=='ring' else
                '框住当前光斑及完整外围（留出余量），确认后由程序拟合中心；可缩放、平移。'))
         self.panel.show()
+        # QDialog may reposition itself relative to its parent when shown again.
+        # Preserve the user's placement across every ROI handoff.
+        self.dialog_geometry = c.dialog.saveGeometry()
+        self.dialog_position = c.dialog.pos()
+        self.dialog_visible = c.dialog.isVisible()
         c.dialog.hide()
         self.window.mainTabWidget.setCurrentWidget(self.window.ccdDetailPage)
         detail.view.fit_image()
@@ -132,5 +137,12 @@ class GeometryPointSelection:
         detail.view.set_draw_mode(drawing)
         detail.update_actions()
         self.packet = self.previous = None
-        self.controller.dialog.show()
-        self.controller.dialog.raise_()
+        dialog = self.controller.dialog
+        dialog.restoreGeometry(self.dialog_geometry)
+        if self.dialog_visible:
+            without_activation = dialog.testAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+            dialog.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
+            dialog.show()
+            if not dialog.isMaximized() and not dialog.isFullScreen():
+                dialog.move(self.dialog_position)
+            dialog.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, without_activation)

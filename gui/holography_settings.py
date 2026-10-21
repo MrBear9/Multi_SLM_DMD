@@ -63,7 +63,8 @@ class HolographySettings(QtCore.QObject):
                 control.setMinimum(1 if key in ('reference_width','reference_height','binning_x','binning_y') else .001)
         for name in ('mode','slm1_width','slm1_height','slm1_pitch_um','slm2_width','slm2_height',
                      'slm2_pitch_um','target_width_um','target_height_um','wavelength_nm',
-                     'slm1_distance_mm','slm2_distance_mm','inter_slm_mm','gray_inverted','output_width','output_height'):
+                     'slm1_distance_mm','slm2_distance_mm','inter_slm_mm','gray_inverted','output_width','output_height',
+                     'geometry_independent_range','geometry_width_um','geometry_height_um'):
             control = getattr(u,name)
             signal = (control.currentIndexChanged if isinstance(control,QtWidgets.QComboBox) else
                       control.toggled if isinstance(control,QtWidgets.QCheckBox) else control.valueChanged)
@@ -76,6 +77,8 @@ class HolographySettings(QtCore.QObject):
             signal.connect(self.manual_changed)
         u.target.textChanged.connect(lambda _: self.preview_timer.start(150))
         u.geometryStartButton.clicked.connect(lambda: u.guarded(lambda: u.controller.start('geometry')))
+        u.matchTargetPhysicalButton.clicked.connect(self.match_target_physical)
+        u.matchGeometryRangeButton.clicked.connect(self.match_geometry_range)
         u.geometryLoadButton.clicked.connect(lambda: u.guarded(self.load_profile))
         u.geometrySaveButton.clicked.connect(lambda: u.guarded(self.save_profile))
         u.applyGeometryButton.clicked.connect(lambda: u.guarded(self.apply_profile))
@@ -167,7 +170,10 @@ class HolographySettings(QtCore.QObject):
                 with QtCore.QSignalBlocker(u.camera_pitch_um):
                     u.camera_pitch_um.setValue(px)
                 u.mapping_confirmed.setChecked(False)
-            u.imagingFormulaLabel.setText(f'名义目标采样：{px:g} × {py:g} μm/px（像元 × Binning ÷ 成像倍率 {mag:g}）；应用后使用实测矩阵。')
+            u.imagingFormulaLabel.setText(f'目标平面 {config.target_width_um/1000:g} × {config.target_height_um/1000:g} mm；'
+                f'CCD 成像倍率 {mag:g} → 像尺寸 {config.target_width_um*mag/1000:g} × {config.target_height_um*mag/1000:g} mm；'
+                f'名义占用 {config.target_width_um/px:.1f} × {config.target_height_um/py:.1f} px。'
+                '应用标定后使用实测矩阵，不再叠乘倍率；非原生分辨率请核对总采样倍率。')
             square = abs(config.sensor_pitch_x_um-config.sensor_pitch_y_um)<1e-6
             u.sensorPitchNoteLabel.setText('方形像元 · X / Y 共用' if square else
                 f'读取值：X {config.sensor_pitch_x_um:g} / Y {config.sensor_pitch_y_um:g} μm（非方形）')
@@ -193,8 +199,11 @@ class HolographySettings(QtCore.QObject):
         try:
             report=bandwidth_report(config)
             status='通过' if report['fits'] else '超限'
-            u.bandwidthLabel.setText(f'定位采样：{report["peak"]:.3f} 周期/像素（限值 0.48，{status}）；'
-                f'保持当前比例的最大视野估算：{report["max_width_um"]:.1f}×{report["max_height_um"]:.1f} μm。')
+            u.bandwidthLabel.setText(f'局部定位采样：{report["peak"]:.3f} 周期/像素（限值 0.48，{status}）；'
+                f'同宽高比的最大探测范围：{report["max_width_um"]:.1f}×{report["max_height_um"]:.1f} μm。')
+            edge='可生成边缘验证图案' if report['target_edge_peak']<.48 else '边缘相位超限：只能先标定局部，不能直接应用于全目标'
+            u.geometryRangeNote.setText(f'局部探测 {config.probe_size()[0]:g} × {config.probe_size()[1]:g} μm；'
+                f'完整目标 {config.target_width_um:g} × {config.target_height_um:g} μm；{edge}。')
             u.fitGeometryRangeButton.setEnabled(not u.controller.active and not report['fits'])
         except (ValueError, ZeroDivisionError):
             u.bandwidthLabel.setText('请选择单 SLM，并填写有效的波长、距离、口径与目标尺寸。')
@@ -205,14 +214,29 @@ class HolographySettings(QtCore.QObject):
         c=self.ui.values().resolve_target_size();r=bandwidth_report(c);u=self.ui
         if r['fits']:
             return
-        if min(r['safe_width_um'],r['safe_height_um'])<max(u.target_width_um.minimum(),u.target_height_um.minimum()):
+        if min(r['safe_width_um'],r['safe_height_um'])<max(u.geometry_width_um.minimum(),u.geometry_height_um.minimum()):
             raise ValueError('即使目标缩到中心，当前口径与距离仍无法满足采样限制；请减小有效口径或调整实际传播距离。')
-        with QtCore.QSignalBlocker(u.targetSizingModeComboBox), QtCore.QSignalBlocker(u.target_width_um), QtCore.QSignalBlocker(u.target_height_um):
-            u.targetSizingModeComboBox.setCurrentIndex(1)
-            u.target_width_um.setValue(r['safe_width_um'])
-            u.target_height_um.setValue(r['safe_height_um'])
+        with QtCore.QSignalBlocker(u.geometry_independent_range), QtCore.QSignalBlocker(u.geometry_width_um), QtCore.QSignalBlocker(u.geometry_height_um):
+            u.geometry_independent_range.setChecked(True)
+            u.geometry_width_um.setValue(r['safe_width_um'])
+            u.geometry_height_um.setValue(r['safe_height_um'])
         self.changed()
-        u.log.appendPlainText('已按原比例缩小目标物理视野，并在带宽边界内保留 2% 尺寸余量；请重新进行几何标定。')
+        u.log.appendPlainText('已缩小局部标定探测范围并保留 2% 余量；重建目标尺寸未改变。完整目标边缘须另外验证通过。')
+
+    def match_target_physical(self):
+        u=self.ui
+        with QtCore.QSignalBlocker(u.targetSizingModeComboBox), QtCore.QSignalBlocker(u.reconstructionScaleSpinBox):
+            u.targetSizingModeComboBox.setCurrentIndex(0)
+            u.reconstructionScaleSpinBox.setValue(1.)
+        self.changed()
+
+    def match_geometry_range(self):
+        u=self.ui;c=u.values().resolve_target_size()
+        with QtCore.QSignalBlocker(u.geometry_independent_range), QtCore.QSignalBlocker(u.geometry_width_um), QtCore.QSignalBlocker(u.geometry_height_um):
+            u.geometry_independent_range.setChecked(True)
+            u.geometry_width_um.setValue(c.target_width_um)
+            u.geometry_height_um.setValue(c.target_height_um)
+        self.changed()
 
     def read_camera(self):
         u = self.ui
@@ -255,6 +279,9 @@ class HolographySettings(QtCore.QObject):
     def update_controls(self):
         u = self.ui
         running = u.controller.active
+        for name in ('geometry_width_um','geometry_height_um'):
+            getattr(u,name).setEnabled(u.geometry_independent_range.isChecked() and not running)
+        u.matchGeometryRangeButton.setEnabled(not running)
         ring=u.geometry_detector.currentIndex()==1
         u.geometry_spot_max_fwhm.setEnabled(not ring)
         u.geometry_ring_radius.setEnabled(ring)
@@ -288,7 +315,7 @@ class HolographySettings(QtCore.QObject):
         return self.ui.controller.hardware_signature() if getattr(w,'camera_ready',False) else None
 
     def show_profile(self, profile):
-        if profile.get('schema') != 1 or profile.get('kind') != 'holography_geometry':
+        if profile.get('schema') not in (1,2) or profile.get('kind') != 'holography_geometry':
             raise ValueError('请选择本窗口保存的 geometry.json。')
         self.pending = profile
         self.update_profile_status()
@@ -310,7 +337,9 @@ class HolographySettings(QtCore.QObject):
             u.calibratedSamplingDisplay.setText(' × '.join(f'{x:.4g}' for x in info['sampling_um'])+' μm/px（中心）')
             error = np.asarray(profile['validation_errors_px'])
             u.geometryErrorDisplay.setText(f'独立验证 RMS {np.sqrt(np.mean(error**2)):.3f} / 最大 {error.max():.3f} px')
-            u.geometryCoverageDisplay.setText(f'{info["coverage"]*100:.2f}% · 旋转 {info["rotation_deg"]:.2f}° · 镜像：'+('是' if info['mirrored'] else '否'))
+            u.geometryCoverageDisplay.setText(f'目标落入 CCD：{info["coverage"]*100:.2f}% · '+
+                ('边缘实测通过' if profile.get('target_validation',{}).get('passed') else '边缘未验证')+
+                f' · 旋转 {info["rotation_deg"]:.2f}° · 镜像：'+('是' if info['mirrored'] else '否'))
             validate_profile(profile,config,hardware=self.current_hardware())
             u.geometryStatusDisplay.setText('已应用实测映射' if self.profile == profile else '验证通过 · 待应用')
         except (ValueError,KeyError,TypeError) as exc:
@@ -388,12 +417,6 @@ class HolographySettings(QtCore.QObject):
                 info = roi_info(matrix,config,raw.shape)
             else:
                 info = roi_info(observation_matrix(config),config,raw.shape)
-            if u.cameraDesignViewComboBox.currentIndex()==2:
-                candidate = replace(config,geometry_profile=profile) if profile else config
-                if profile:
-                    validate_profile(profile,candidate,hardware=self.current_hardware(),raw_shape=raw.shape)
-                corrected = rectify(raw,candidate)
-                u.pixmaps['rectified'] = self.pixmap(corrected/config.camera_white*255)
             signal = raw[...,1] if raw.ndim==3 else raw
             stride = max(1,int(np.ceil(max(signal.shape)/1200)))
             pixmap = self.pixmap(signal[::stride,::stride]/max(config.camera_white,1)*255).toImage().convertToFormat(QtGui.QImage.Format_RGB32)
@@ -402,9 +425,20 @@ class HolographySettings(QtCore.QObject):
                 painter.setRenderHint(QtGui.QPainter.Antialiasing)
                 painter.setPen(QtGui.QPen(QtGui.QColor('#ff3030'),2))
                 painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(x/stride,y/stride) for x,y in info['quad']]))
+                if profile and profile.get('probe_size_um'):
+                    width,height=profile['probe_size_um']
+                    probe=roi_info(matrix,replace(config,target_width_um=width,target_height_um=height),raw.shape)
+                    painter.setPen(QtGui.QPen(QtGui.QColor('#00bfff'),2,QtCore.Qt.DashLine))
+                    painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(x/stride,y/stride) for x,y in probe['quad']]))
                 painter.end()
             u.pixmaps['raw'] = QtGui.QPixmap.fromImage(pixmap)
-            u.cameraPreview.setToolTip('最近一次任务采集的原始帧；红框是目标物理矩形的投影。')
+            u.cameraPreview.setToolTip('红框：完整重建目标 ROI；蓝色虚线：标定探测范围。局部通过不代表红框全区域已经验证。')
+            if u.cameraDesignViewComboBox.currentIndex()==2:
+                candidate = replace(config,geometry_profile=profile) if profile else config
+                if profile:
+                    validate_profile(profile,candidate,hardware=self.current_hardware(),raw_shape=raw.shape)
+                corrected = rectify(raw,candidate)
+                u.pixmaps['rectified'] = self.pixmap(corrected/config.camera_white*255)
         except (OSError,ValueError,KeyError,TypeError) as exc:
             u.pixmaps.pop('rectified',None)
             u.cameraPreview.setToolTip(str(exc))

@@ -265,6 +265,18 @@ class HolographyController(QtCore.QObject):
             self.worker_error = message.get('message','训练失败')
         elif kind == 'progress':
             self.dialog.progress.setValue(int(message['value']))
+        elif kind == 'geometry_exposure_locked':
+            if self.stopping or self.process_done:
+                return
+            if not self.hardware_active or self.config.operation != 'geometry' or not self.config.geometry_auto_exposure:
+                raise ValueError('当前任务不允许更新自动标定曝光。')
+            exposure = float(message['exposure_us'])
+            field = self.dialog.geometry_exposure_us
+            if not np.isfinite(exposure) or not field.minimum() <= exposure <= field.maximum():
+                raise ValueError('自动标定返回了无效的锁定曝光值。')
+            self.validate_exposure(exposure)
+            field.setValue(exposure)
+            self.log(f'已将几何标定曝光更新为 {exposure:g} μs，可随全息参数保存。')
         elif kind == 'preview':
             if message['kind'] not in ('target','simulation','camera','camera_raw'):
                 raise ValueError('未知预览类型。')

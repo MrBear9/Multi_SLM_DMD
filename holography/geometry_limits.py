@@ -5,12 +5,24 @@ import numpy as np
 LIMIT = .48
 
 
-def probe_points(config):
+def target_edge_points(config):
+    return np.array([[-.5,-.5],[0,-.5],[.5,-.5],[.5,0],
+                     [.5,.5],[0,.5],[-.5,.5],[-.5,0]]) * [config.target_width_um,config.target_height_um]
+
+
+def target_edge_bandwidth(config):
+    return max(probe_frequency(config,p) for p in target_edge_points(config))
+
+
+def probe_points(config, include_target=True):
     train=np.array([(x,y) for y in (-.4,0,.4) for x in (-.4,0,.4)])
     if config.geometry_pattern=='asymmetric':
         train[1]=[-.08,-.32];train[5]=[.32,.08]
     held=np.array([[-.31,-.19],[.23,-.29],[.29,.27],[-.27,.31],[.06,-.07]])
-    return np.vstack([train,held])*[config.target_width_um,config.target_height_um],len(train)
+    points = np.vstack([train,held])*config.probe_size()
+    if include_target and target_edge_bandwidth(config)<LIMIT:
+        points=np.vstack((points,target_edge_points(config)))
+    return points,len(train)
 
 
 def probe_frequency(config, point):
@@ -35,7 +47,7 @@ def probe_frequency(config, point):
 def bandwidth_report(config):
     if config.mode=='dual':
         raise ValueError('此范围检查适用于单 SLM 几何标定。')
-    points,_=probe_points(config)
+    points,_=probe_points(config,include_target=False)
     def peak(scale):
         return max(probe_frequency(config,point*scale) for point in points)
     current=peak(1.)
@@ -50,9 +62,11 @@ def bandwidth_report(config):
             if peak(mid)<LIMIT:lo=mid
             else:hi=mid
         scale=lo
+    width,height=config.probe_size()
     return {'peak':current,'limit':LIMIT,'fits':current<LIMIT,
-            'max_width_um':config.target_width_um*scale,'max_height_um':config.target_height_um*scale,
-            'safe_width_um':config.target_width_um*scale*.98,'safe_height_um':config.target_height_um*scale*.98}
+            'max_width_um':width*scale,'max_height_um':height*scale,
+            'safe_width_um':width*scale*.98,'safe_height_um':height*scale*.98,
+            'target_edge_peak':target_edge_bandwidth(config)}
 
 
 def validate_probe_bandwidth(config):
@@ -60,5 +74,5 @@ def validate_probe_bandwidth(config):
     if not report['fits']:
         raise ValueError(f'定位相位超过 SLM 像素的采样带宽：{report["peak"]:.3f} 周期/像素 ≥ {LIMIT}。'
                          f'当前比例下估算最大视野 {report["max_width_um"]:.1f}×{report["max_height_um"]:.1f} μm；'
-                         '请使用“调整到可标定范围”，或核对实际传播距离与有效口径。')
+                         '请使用“调整标定探测范围”，或核对实际传播距离与有效口径；重建目标尺寸保持不变。')
     return report

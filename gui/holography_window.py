@@ -10,6 +10,10 @@ from ..holography.config import HolographyConfig
 from ..utils.paths import TOOLS_ROOT
 from .holography_settings import HolographySettings, CONTROLS, STORED_FIELDS
 
+ENVIRONMENT_FIELDS = ('pythonPath', 'workerPath', 'outputPath')
+VIEW_FIELDS = ('targetDesignViewComboBox', 'cameraDesignViewComboBox',
+               'showTargetRoiCheckBox', 'rectifyTargetCheckBox')
+
 
 class HolographyWindow(QtWidgets.QDialog):
     def __init__(self, controller):
@@ -209,13 +213,60 @@ class HolographyWindow(QtWidgets.QDialog):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '载入全息参数', '', 'JSON (*.json)')
         if path:
             data = json.loads(Path(path).read_text(encoding='utf-8'))
-            self.set_values(HolographyConfig.from_dict(data.get('config', data)))
+            config = HolographyConfig.from_dict(data.get('config', data))
+            environment = data.get('environment', {}) if 'config' in data else {}
+            view = data.get('view', {}) if 'config' in data else {}
+            if not isinstance(environment, dict) or not isinstance(view, dict):
+                raise ValueError('全息参数中的环境或预览设置格式不正确。')
+            for key, value in environment.items():
+                if key not in ENVIRONMENT_FIELDS or not isinstance(value, str):
+                    raise ValueError('未知或无效的全息环境参数：'+key)
+            for key, value in view.items():
+                if key not in VIEW_FIELDS:
+                    raise ValueError('未知全息预览参数：'+key)
+                control = getattr(self, key)
+                if isinstance(control, QtWidgets.QComboBox):
+                    valid = isinstance(value, str) and control.findText(value) >= 0
+                else:
+                    valid = type(value) is bool
+                if not valid:
+                    raise ValueError('无效的全息预览参数：'+key)
+            self.set_values(config)
+            for key, value in environment.items():
+                getattr(self, key).setText(value)
+            # Restore together: the rectification checkbox normally changes the
+            # camera preview combo, but a saved combo selection must win here.
+            blockers = [QtCore.QSignalBlocker(getattr(self, key)) for key in VIEW_FIELDS]
+            for key, value in view.items():
+                control = getattr(self, key)
+                if isinstance(control, QtWidgets.QComboBox):
+                    control.setCurrentText(value)
+                else:
+                    control.setChecked(value)
+            del blockers
+            self.settings.update_camera()
+            self.refresh_previews()
             self.mapping_confirmed.setChecked(False)
+            self.log.appendPlainText(f'已载入全息参数：{path}\n尺寸设置：{self.targetSizingModeComboBox.currentText()}；'
+                f'目标视野 {self.target_width_um.value():g} × {self.target_height_um.value():g} μm。')
 
     def save_config(self):
+        # Commit typed spin-box text even if it has not lost focus yet.
+        for control in self.findChildren(QtWidgets.QAbstractSpinBox):
+            if control.window() is self:
+                control.interpretText()
         path, _ = QtWidgets.QFileDialog.getSaveFileName(self, '保存全息参数', 'holography.json', 'JSON (*.json)')
         if path:
-            Path(path).write_text(json.dumps(asdict(self.values()), ensure_ascii=False, indent=2), encoding='utf-8')
+            view = {}
+            for key in VIEW_FIELDS:
+                control = getattr(self, key)
+                view[key] = control.currentText() if isinstance(control, QtWidgets.QComboBox) else control.isChecked()
+            document = {'kind':'holography_parameters', 'version':1,
+                        'config':asdict(self.values()),
+                        'environment':{key:getattr(self,key).text().strip() for key in ENVIRONMENT_FIELDS},
+                        'view':view}
+            Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding='utf-8')
+            self.log.appendPlainText('已保存全息参数（含文件与环境、预览设置）：'+path)
 
     def load_result(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '载入生成的相位结果', '', 'Result (result.json)')

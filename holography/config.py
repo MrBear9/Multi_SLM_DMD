@@ -60,6 +60,9 @@ class HolographyConfig:
     geometry_mapping: str = 'affine'
     geometry_pattern: str = 'sequential'
     geometry_tolerance: float = 2.
+    geometry_independent_range: bool = False
+    geometry_width_um: float = 1000.
+    geometry_height_um: float = 1000.
     geometry_spot_max_fwhm: float = 0.
     geometry_spot_stability: float = 1.
     geometry_repeats: int = 2
@@ -137,6 +140,11 @@ class HolographyConfig:
             w, h = self.reference_size()
             self.target_width_um, self.target_height_um = w*self.reconstruction_scale, h*self.reconstruction_scale
         return self
+
+    def probe_size(self):
+        if self.geometry_independent_range:
+            return self.geometry_width_um, self.geometry_height_um
+        return self.target_width_um, self.target_height_um
 
     def exposure_for(self, current):
         if not self.stage_exposure_enabled:
@@ -222,7 +230,8 @@ class HolographyConfig:
                     'reference_width', 'reference_height', 'reference_pitch_um',
                     'reference_physical_width_um', 'reference_physical_height_um', 'reconstruction_scale',
                     'sensor_pitch_x_um', 'sensor_pitch_y_um', 'binning_x', 'binning_y',
-                    'relay_magnification', 'geometry_tolerance', 'geometry_spot_stability', 'geometry_exposure_us', 'reconstruction_exposure_us'):
+                    'relay_magnification', 'geometry_tolerance', 'geometry_width_um', 'geometry_height_um',
+                    'geometry_spot_stability', 'geometry_exposure_us', 'reconstruction_exposure_us'):
             if getattr(self, key) <= 0:
                 raise ValueError(key + ' 必须大于零。')
         if not 0 <= self.init_range_rad <= math.pi + 1e-6:
