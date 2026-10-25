@@ -25,6 +25,8 @@ def run(job, rpc=None):
     from PIL import Image
 
     config = HolographyConfig.from_dict(job['config']).validate()
+    if config.geometry_profile.get('target_plane_assumption'):
+        emit('log',message='警告：本次使用棋盘格映射，假设 SLM 面与目标平面 1:1 对应；绝对重建尺度及完整边缘尚未独立验证。')
     root = Path(job['output']).resolve()
     root.mkdir(parents=True, exist_ok=True)
     (root/'job.json').write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding='utf-8')

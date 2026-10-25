@@ -32,6 +32,7 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         self.orientation = ImageTransform()
         self.image_size = QtCore.QSize()
         self.roi = None
+        self.roi_ellipse = False
         self.roi_name = 'ROI 01'
         self.show_roi = True
         self.draw_mode = False
@@ -219,7 +220,10 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.setBrush(QtCore.Qt.NoBrush)
-        painter.drawRect(QtCore.QRectF(self.roi))
+        if self.roi_ellipse:
+            painter.drawEllipse(QtCore.QRectF(self.roi))
+        else:
+            painter.drawRect(QtCore.QRectF(self.roi))
         scale = math.hypot(self.transform().m11(), self.transform().m12())
         radius = 3.5 / max(scale, 1e-8)
         painter.setBrush(QtGui.QColor('#ff3b30'))

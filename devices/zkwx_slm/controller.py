@@ -119,13 +119,12 @@ def canvas_origin(
     offset_x: int = 0,
     offset_y: int = 0,
 ) -> tuple[int, int]:
-    """Return native-pixel placement relative to the centre of the SLM panel."""
+    """Return centred native-pixel placement; shifted pixels may leave the panel."""
     width, height = image_size
     left = (monitor.width - width) // 2 + offset_x
     top = (monitor.height - height) // 2 + offset_y
-    if (width <= 0 or height <= 0 or left < 0 or top < 0
-            or left + width > monitor.width or top + height > monitor.height):
-        raise ValueError("The requested SLM1 offset moves the phase image outside the display.")
+    if width <= 0 or height <= 0 or width > monitor.width or height > monitor.height:
+        raise ValueError("The SLM1 phase image size exceeds the display.")
     return left, top
 
 
@@ -140,6 +139,7 @@ def prepare_canvas(
 
     The caller owns the returned image. Keeping the whole panel covered also
     clears pixels occupied by a previous placement when the offset changes.
+    Paste clips shifted pixels at panel edges; exposed pixels remain zero gray.
     """
     with Image.open(path) as image:
         image.load()

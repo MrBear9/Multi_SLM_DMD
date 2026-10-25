@@ -121,6 +121,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.holographyPreviewButton.clicked.connect(self.holography.open)
         for key in ('slm1', 'slm2'):
             getattr(self, key + 'ApplyOffsetButton').clicked.connect(partial(self.guard, partial(self.apply_offset, key)))
+            fill = '灰度 0' if key == 'slm1' else '配置的外围灰度'
+            note = f'相对面板中心按原生像素平移；越界部分裁掉，空出区域填充{fill}。不循环、不缩放。切换“完整面板”查看实际输出；“有效区域”仍显示输入图案。'
+            for suffix in ('OffsetXSpinBox','OffsetYSpinBox','ApplyOffsetButton'):
+                getattr(self,key+suffix).setToolTip(note)
         self.synchronizeDmdCcdCheckBox.toggled.connect(self.capture_sync_changed)
         self.slmCaptureSourceComboBox.currentIndexChanged.connect(self.slm_capture_sync_changed)
         self.ccdApplyParametersButton.clicked.connect(partial(self.guard, self.apply_camera_parameters))

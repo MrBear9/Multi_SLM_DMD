@@ -1,6 +1,7 @@
 """Target sizing, observation settings and geometry profiles for the child UI."""
 from dataclasses import replace
 import json
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -8,12 +9,13 @@ from PIL import Image
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..holography.config import HolographyConfig
-from ..holography.geometry import observation_matrix, roi_info, signature, validate_profile
+from ..holography.geometry import observation_matrix, roi_info, signature, validate_profile, validate_pattern_profile
 from ..holography.target import prepare_target
 from ..holography.camera import rectify
 
 
 CONTROLS = {
+    'geometry_method': ('geometry_method', ('probes','checkerboard')),
     'geometry_detector': ('geometry_detector', ('spot','ring')),
     'geometry_probe': ('geometry_probe', ('focus','disk','axicon')),
     'geometry_assistance': ('geometryAssistanceComboBox', ('automatic','manual','on_failure')),
@@ -69,7 +71,7 @@ class HolographySettings(QtCore.QObject):
             signal = (control.currentIndexChanged if isinstance(control,QtWidgets.QComboBox) else
                       control.toggled if isinstance(control,QtWidgets.QCheckBox) else control.valueChanged)
             signal.connect(lambda _, k=name: self.changed(k))
-        for name in ('geometry_axicon_period_um','geometry_probe_radius_um'):
+        for name in ('geometry_axicon_period_um','geometry_probe_radius_um','checker_cell_px','checker_columns','checker_rows'):
             getattr(u,name).valueChanged.connect(lambda _: self.changed())
         for name in ('camera_center_x','camera_center_y','camera_angle_deg','camera_pitch_um','camera_flip_x','camera_flip_y'):
             control = getattr(u,name)
@@ -83,6 +85,8 @@ class HolographySettings(QtCore.QObject):
         u.geometrySaveButton.clicked.connect(lambda: u.guarded(self.save_profile))
         u.applyGeometryButton.clicked.connect(lambda: u.guarded(self.apply_profile))
         u.showTargetRoiCheckBox.toggled.connect(self.update_camera)
+        u.show_observation_fov.toggled.connect(self.update_camera)
+        u.observation_fov_scale.valueChanged.connect(self.update_camera)
         u.rectifyTargetCheckBox.toggled.connect(self.select_camera_view)
         for name in ('targetDesignViewComboBox','cameraDesignViewComboBox'):
             getattr(u,name).setEnabled(True)
@@ -196,6 +200,18 @@ class HolographySettings(QtCore.QObject):
     def update_bandwidth(self, config):
         from ..holography.geometry_limits import bandwidth_report
         u=self.ui
+        if config.geometry_method=='checkerboard':
+            cell=config.checker_cell_px
+            pitch=getattr(config,config.active_slms[0]+'_pitch_um')
+            h,w=config.shape(config.active_slms[0])
+            needed=((config.checker_columns+5)*cell,(config.checker_rows+5)*cell)
+            u.checkerPitchNote.setText(f'物理格距 {cell*pitch:g} μm；含移动余量需 {needed[0]}×{needed[1]} px'+
+                ('（超出有效区域，请减小格宽/格数）' if needed[0]>w or needed[1]>h else ''))
+            u.checkerPitchNote.setWordWrap(True)
+            u.bandwidthLabel.setText('棋盘格直接在 SLM 面平移，不采用聚焦探针的 0.48 周期/像素检查。')
+            u.geometryRangeNote.setText('测量中心小棋盘；完整 SLM 面框由已知格距外推。目标重建尺寸保持不变。')
+            u.fitGeometryRangeButton.setEnabled(False)
+            return
         try:
             report=bandwidth_report(config)
             status='通过' if report['fits'] else '超限'
@@ -283,10 +299,23 @@ class HolographySettings(QtCore.QObject):
             getattr(u,name).setEnabled(u.geometry_independent_range.isChecked() and not running)
         u.matchGeometryRangeButton.setEnabled(not running)
         ring=u.geometry_detector.currentIndex()==1
+        checker=u.geometry_method.currentIndex()==1
+        u.checkerNote.setVisible(checker)
+        u.geometryRingNote.setVisible(not checker)
         u.geometry_spot_max_fwhm.setEnabled(not ring)
         u.geometry_ring_radius.setEnabled(ring)
         u.geometry_probe_radius_um.setEnabled(u.geometry_probe.currentIndex()==1)
         u.geometry_axicon_period_um.setEnabled(u.geometry_probe.currentIndex()==2)
+        for name in ('checker_cell_px','checker_columns','checker_rows'):
+            getattr(u,name).setEnabled(checker and not running)
+        for name in ('geometry_detector','geometry_probe','geometryPatternComboBox','geometry_movement_check',
+                     'geometry_spot_max_fwhm','geometry_ring_radius','geometry_probe_radius_um',
+                     'geometry_axicon_period_um','geometry_independent_range','matchGeometryRangeButton'):
+            if checker: getattr(u,name).setEnabled(False)
+            elif name in ('geometry_detector','geometry_probe','geometryPatternComboBox','geometry_movement_check','geometry_independent_range'):
+                getattr(u,name).setEnabled(not running)
+        if checker:
+            u.geometry_width_um.setEnabled(False);u.geometry_height_um.setEnabled(False)
         reference = u.referenceSourceComboBox.currentIndex()
         automatic = u.targetSizingModeComboBox.currentIndex()==0
         for name in ('referenceWidthSpinBox','referenceHeightSpinBox'):
@@ -298,7 +327,7 @@ class HolographySettings(QtCore.QObject):
             getattr(u,name).setEnabled(not automatic)
         u.reconstructionScaleSpinBox.setEnabled(automatic)
         u.relayMagnificationSpinBox.setEnabled(u.cameraOpticalPathComboBox.currentIndex()==1)
-        u.geometryStartButton.setEnabled(not running and u.mode.currentIndex()!=2 and u.cameraOpticalPathComboBox.currentIndex()!=2)
+        u.geometryStartButton.setEnabled(not running and u.mode.currentIndex()!=2 and (checker or u.cameraOpticalPathComboBox.currentIndex()!=2))
         u.geometryStartButton.setToolTip('逐点显示定位相位，采集并验证；单 SLM 模式无需 DMD。双 SLM 请使用原光路标定入口。')
         u.geometryLoadButton.setEnabled(not running)
         u.geometrySaveButton.setEnabled(not running and bool(self.pending or self.profile))
@@ -315,7 +344,7 @@ class HolographySettings(QtCore.QObject):
         return self.ui.controller.hardware_signature() if getattr(w,'camera_ready',False) else None
 
     def show_profile(self, profile):
-        if profile.get('schema') not in (1,2) or profile.get('kind') != 'holography_geometry':
+        if profile.get('schema') not in (1,2) or profile.get('kind') not in ('holography_geometry','slm_pattern_geometry'):
             raise ValueError('请选择本窗口保存的 geometry.json。')
         self.pending = profile
         self.update_profile_status()
@@ -331,6 +360,10 @@ class HolographySettings(QtCore.QObject):
             return
         try:
             config = u.values().resolve_target_size()
+            checker=profile.get('kind')=='slm_pattern_geometry'
+            if checker and not profile.get('target_plane_assumption'):
+                width,height=profile['panel_size_um']
+                config=replace(config,target_width_um=width,target_height_um=height)
             info = roi_info(profile['matrix'],config,profile['raw_shape'])
             u.roiPhysicalSizeDisplay.setText(f'{config.target_width_um:g} × {config.target_height_um:g} μm')
             u.roiCameraBoundsDisplay.setText(' / '.join(f'{x:.1f}' for x in info['bounds'])+' px（xmin/ymin/xmax/ymax）')
@@ -340,6 +373,16 @@ class HolographySettings(QtCore.QObject):
             u.geometryCoverageDisplay.setText(f'目标落入 CCD：{info["coverage"]*100:.2f}% · '+
                 ('边缘实测通过' if profile.get('target_validation',{}).get('passed') else '边缘未验证')+
                 f' · 旋转 {info["rotation_deg"]:.2f}° · 镜像：'+('是' if info['mirrored'] else '否'))
+            if checker:
+                u.roiPhysicalSizeDisplay.setText(f'{config.target_width_um:g} × {config.target_height_um:g} μm')
+                u.geometryCoverageDisplay.setText(f'SLM 面外推框在 CCD 内：{info["coverage"]*100:.2f}% · 旋转 {info["rotation_deg"]:.2f}° · 镜像：'+('是' if info['mirrored'] else '否'))
+                if profile.get('target_plane_assumption'):
+                    validate_profile(profile,u.values().resolve_target_size(),hardware=self.current_hardware())
+                    u.geometryStatusDisplay.setText('棋盘格映射 · 假设目标平面 1:1；完整边缘及平面对应未验证')
+                else:
+                    u.geometryStatusDisplay.setText(('棋盘格局部验证通过' if profile.get('validated') else '棋盘格验证未通过')+' · 可带 1:1 平面假设警告应用')
+                u.geometryProfileComboBox.setItemText(0,'棋盘格 · '+('已应用 1:1 假设' if self.profile==profile else '待应用'))
+                return
             validate_profile(profile,config,hardware=self.current_hardware())
             u.geometryStatusDisplay.setText('已应用实测映射' if self.profile == profile else '验证通过 · 待应用')
         except (ValueError,KeyError,TypeError) as exc:
@@ -349,7 +392,17 @@ class HolographySettings(QtCore.QObject):
     def apply_profile(self):
         if self.ui.controller.active or self.pending is None:
             raise ValueError('请先完成或载入几何标定。')
-        validate_profile(self.pending,self.ui.values().resolve_target_size(),hardware=self.current_hardware())
+        config=self.ui.values().resolve_target_size()
+        if self.pending.get('kind')=='slm_pattern_geometry':
+            validate_pattern_profile(self.pending,config,hardware=self.current_hardware(),require_assumption=False)
+            message=('将按“SLM 面与目标平面 1:1 对应”的假设应用棋盘格映射，可用于相机回环。\n'
+                '这是实测 SLM 面映射，尚未验证目标平面的绝对尺度或完整边缘；请用已知尺寸图案核对。\n'
+                '目标尺寸保持不变，不乘 ASM 预留倍率或相机中继倍率。')
+            QtWidgets.QMessageBox.warning(self.ui,'棋盘格映射：1:1 平面假设',message)
+            self.pending=copy.deepcopy(self.pending)
+            self.pending['target_plane_assumption']={'kind':'slm_target_1to1','signature':signature(config)}
+            self.ui.log.appendPlainText(message)
+        validate_profile(self.pending,config,hardware=self.current_hardware())
         self.profile = self.pending
         with QtCore.QSignalBlocker(self.ui.magnificationSourceComboBox):
             self.ui.magnificationSourceComboBox.setCurrentIndex(1)
@@ -414,6 +467,9 @@ class HolographySettings(QtCore.QObject):
             if profile:
                 # A failed profile may be visualised, but never used for rectification.
                 matrix = np.asarray(profile['matrix'])
+                if profile.get('kind')=='slm_pattern_geometry' and not profile.get('target_plane_assumption'):
+                    width,height=profile['panel_size_um']
+                    config=replace(config,target_width_um=width,target_height_um=height)
                 info = roi_info(matrix,config,raw.shape)
             else:
                 info = roi_info(observation_matrix(config),config,raw.shape)
@@ -421,18 +477,38 @@ class HolographySettings(QtCore.QObject):
             stride = max(1,int(np.ceil(max(signal.shape)/1200)))
             pixmap = self.pixmap(signal[::stride,::stride]/max(config.camera_white,1)*255).toImage().convertToFormat(QtGui.QImage.Format_RGB32)
             if u.showTargetRoiCheckBox.isChecked():
-                painter = QtGui.QPainter(pixmap)
-                painter.setRenderHint(QtGui.QPainter.Antialiasing)
-                painter.setPen(QtGui.QPen(QtGui.QColor('#ff3030'),2))
-                painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(x/stride,y/stride) for x,y in info['quad']]))
+                overlays=[(info['quad'],'#ff3030',QtCore.Qt.SolidLine)]
+                if config.show_observation_fov:
+                    try:
+                        outer=roi_info(matrix if profile else observation_matrix(config),replace(config,
+                            target_width_um=config.target_width_um*config.observation_fov_scale,
+                            target_height_um=config.target_height_um*config.observation_fov_scale),raw.shape)
+                    except ValueError:
+                        # A perspective map may be valid over the target while
+                        # crossing infinity in the larger, optional overlay.
+                        pass
+                    else:
+                        overlays.append((outer['quad'],'#ffb020',QtCore.Qt.DashLine))
+                if profile and profile.get('measured_hull_um'):
+                    from ..holography.geometry import project
+                    hull=project(matrix,profile['measured_hull_um'])
+                    overlays.append((hull,'#00bfff',QtCore.Qt.DashLine))
                 if profile and profile.get('probe_size_um'):
                     width,height=profile['probe_size_um']
                     probe=roi_info(matrix,replace(config,target_width_um=width,target_height_um=height),raw.shape)
-                    painter.setPen(QtGui.QPen(QtGui.QColor('#00bfff'),2,QtCore.Qt.DashLine))
-                    painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(x/stride,y/stride) for x,y in probe['quad']]))
-                painter.end()
+                    overlays.append((probe['quad'],'#00bfff',QtCore.Qt.DashLine))
+                painter = QtGui.QPainter(pixmap)
+                try:
+                    painter.setRenderHint(QtGui.QPainter.Antialiasing)
+                    for polygon,color,style in overlays:
+                        painter.setPen(QtGui.QPen(QtGui.QColor(color),2,style))
+                        painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(x/stride,y/stride) for x,y in polygon]))
+                finally:
+                    painter.end()
             u.pixmaps['raw'] = QtGui.QPixmap.fromImage(pixmap)
-            u.cameraPreview.setToolTip('红框：完整重建目标 ROI；蓝色虚线：标定探测范围。局部通过不代表红框全区域已经验证。')
+            u.cameraPreview.setToolTip('红框：目标 ROI；橙色虚线：外围观察视野；蓝色虚线：标定探测范围。外围倍率不改变训练目标或映射。')
+            if profile and profile.get('kind')=='slm_pattern_geometry':
+                u.cameraPreview.setToolTip('红框：棋盘格推算的区域；橙色虚线：外围观察视野；蓝色虚线：实测角点范围。用于回环时采用目标平面 1:1 假设。')
             if u.cameraDesignViewComboBox.currentIndex()==2:
                 candidate = replace(config,geometry_profile=profile) if profile else config
                 if profile:

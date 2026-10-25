@@ -12,6 +12,7 @@ from ..devices.zkwx_slm import controller as images
 
 HOLOGRAPHY_PATTERNS = {'聚焦 / 菲涅尔': 'focus', '圆形相位区': 'disk', '轴锥': 'axicon'}
 MANUAL_FRESNEL = '菲涅尔（手动周期）'
+CALIBRATION_CHECKERBOARD = '中心棋盘格（标定）'
 
 
 class LiveInputs:
@@ -203,6 +204,7 @@ class LiveInputs:
                 action.setToolTip('读取全息标定当前参数，生成目标中心的探测相位；按有效尺寸居中显示。')
                 actions[action]=name
             manual=menu.addAction(MANUAL_FRESNEL+'…')
+            actions[menu.addAction(CALIBRATION_CHECKERBOARD)]=CALIBRATION_CHECKERBOARD
             configure=menu.addAction('全息参数设置…')
             menu.addSeparator()
         restore = menu.addAction('恢复当前输入图像')
@@ -225,6 +227,7 @@ class LiveInputs:
         value,accepted=QtWidgets.QInputDialog.getDouble(w,key.upper()+' · 手动菲涅尔',
             '周期参数 P / px：中心至首个 2π 相位环的半径。\n'
             'P 越大，环纹越疏；各圈间隔不相等。\n'
+            '首次默认 85 px 为测试预设，不是当前距离的自动计算结果。\n'
             '读取全息有效宽高和灰度方向；仅用于测试，不修改标定距离。\n'
             '此定义不保证与 Magic 软件的“周期”数值相同。',
             self.manual_periods.get(key,85.),1.,10000.,2)
@@ -245,13 +248,17 @@ class LiveInputs:
         display = w.devices[key].display
         path = Path(self.directory.name) / f'{key}_{uuid4().hex}.bmp'
         description=name
-        if name in HOLOGRAPHY_PATTERNS or name==MANUAL_FRESNEL:
+        if name in HOLOGRAPHY_PATTERNS or name in (MANUAL_FRESNEL,CALIBRATION_CHECKERBOARD):
             from ..holography.probe_phase import focus_phase, manual_fresnel_phase
             config=w.holography.phase_test_config(key,HOLOGRAPHY_PATTERNS.get(name,'focus'))
             h,width=config.shape(key)
             if width>display.width or h>display.height:
                 raise ValueError(f'{key.upper()} 全息有效区域超出当前面板，请在全息参数中调整。')
-            if name==MANUAL_FRESNEL:
+            if name==CALIBRATION_CHECKERBOARD:
+                from ..holography.checkerboard import board
+                image=Image.fromarray(board(config)[0])
+                description=f'{name} · 格宽 {config.checker_cell_px} px · 内角点 {config.checker_columns}×{config.checker_rows}'
+            elif name==MANUAL_FRESNEL:
                 if manual_period is None:
                     raise ValueError('请从测试菜单输入手动菲涅尔周期。')
                 image=Image.fromarray(manual_fresnel_phase(config,manual_period))

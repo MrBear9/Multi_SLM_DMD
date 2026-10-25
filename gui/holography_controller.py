@@ -99,7 +99,11 @@ class HolographyController(QtCore.QObject):
             config.magnification_source = 'manual'
         if config.operation == 'geometry':
             from ..holography.geometry_limits import validate_probe_bandwidth
-            validate_probe_bandwidth(config)
+            if config.geometry_method=='probes':
+                validate_probe_bandwidth(config)
+            else:
+                from ..holography.checkerboard import board
+                board(config)
             if config.geometry_search_roi:
                 from ..holography.spot_detection import search_rect
                 hardware=self.hardware_signature()
@@ -107,7 +111,10 @@ class HolographyController(QtCore.QObject):
                 if len(size)!=2:
                     raise ValueError('请连接相机并重新读取第三页定位搜索 ROI。')
                 search_rect(config.geometry_search_roi,size[::-1],hardware)
-        config.fit_grid().validate()
+        if config.operation=='geometry' and config.geometry_method=='checkerboard':
+            config.validate()
+        else:
+            config.fit_grid().validate()
         ui.grid_width.setValue(config.grid_width)
         ui.grid_height.setValue(config.grid_height)
         python = Path(ui.pythonPath.text().strip())

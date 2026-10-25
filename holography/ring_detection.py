@@ -65,6 +65,42 @@ def _symmetry(data, initial, radius, band=(.15,.95), search=True):
 
 def locate_ring(raw, background, white, diagnostics=None, *, radius=100., stability=1., search_roi=None):
     report=diagnostics if diagnostics is not None else {}
+    if search_roi and search_roi.get('ring_selection')=='ellipse_boundary':
+        from .selected_ring import locate_selected_ring
+        return locate_selected_ring(raw,background,white,report,stability=stability,search_roi=search_roi)
+    # Try complete inner bands first; never force outer panel edges into a fit.
+    attempts=[];accepted=[]
+    if search_roi:
+        _,_,w,h=search_rect(search_roi,np.asarray(raw).shape)
+        maximum=min(float(radius),min(w,h)*.48)
+        radii=sorted(set(max(20.,maximum*f) for f in (.45,.65,.82,1.)))
+    else:
+        radii=[radius]
+    for current in radii:
+        local={}
+        try:
+            result=_locate_ring(raw,background,white,local,radius=current,stability=stability,search_roi=search_roi)
+        except ValueError as exc:
+            attempts.append({'radius_px':float(current),'error':str(exc)})
+            report.update(local)
+            last_error=exc
+        else:
+            attempts.append({'radius_px':float(current),'center_xy':result})
+            accepted.append((current,result,local))
+            if len(accepted)>1 and np.linalg.norm(np.asarray(result)-accepted[-2][1])<=stability:
+                _,position,selected=accepted[-2]
+                report.update(selected);report['inside_out_attempts']=attempts
+                report['cross_radius_centers_xy']=[position,result]
+                return position
+    report['inside_out_attempts']=attempts
+    report['status']='rejected'
+    if accepted:
+        raise ValueError('内圈搜索在不同半径下尚未得到一致中心；可勾选手动指定圆环边界。')
+    raise last_error
+
+
+def _locate_ring(raw, background, white, diagnostics=None, *, radius=100., stability=1., search_roi=None):
+    report=diagnostics if diagnostics is not None else {}
     report.update(white_level=float(white),status='rejected',detector='radial_rings')
     image=gray_channel(raw).astype(np.float32)
     base=gray_channel(background).astype(np.float32)

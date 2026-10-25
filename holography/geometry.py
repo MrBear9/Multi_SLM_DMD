@@ -92,6 +92,8 @@ def geometry_hardware(hardware):
 
 
 def validate_profile(profile, config, hardware=None, raw_shape=None):
+    if profile.get('kind') == 'slm_pattern_geometry':
+        return validate_pattern_profile(profile,config,hardware,raw_shape)
     if profile.get('schema') == 2 and profile.get('local_validated') and not profile.get('target_validation',{}).get('passed'):
         raise ValueError('局部标定通过，但完整目标边缘尚未验证通过，不能应用于全视野重建。')
     if profile.get('schema') == 2 and profile.get('local_validated') and profile.get('roi',{}).get('coverage',0)<.99999:
@@ -130,6 +132,37 @@ def validate_profile(profile, config, hardware=None, raw_shape=None):
             raise ValueError('边缘验证点与当前完整目标尺寸不一致。')
         if np.linalg.norm(project(matrix,physical)-measured,axis=1).max()>config.geometry_tolerance:
             raise ValueError('完整目标边缘验证误差超限。')
+    return info
+
+
+def validate_pattern_profile(profile, config, hardware=None, raw_shape=None, *, require_assumption=True):
+    """Apply measured SLM coordinates under an explicit, persistent plane assumption."""
+    if profile.get('schema')!=1 or profile.get('kind')!='slm_pattern_geometry' or profile.get('validated') is not True:
+        raise ValueError('棋盘格标定未通过验证。')
+    if require_assumption and profile.get('target_plane_assumption')!={'kind':'slm_target_1to1','signature':signature(config)}:
+        raise ValueError('棋盘格映射不能直接代替目标平面标定；请点击应用并阅读 1:1 平面假设警告。参数变化后需重新应用。')
+    stored=profile.get('config',{})
+    if config.mode not in ('slm1','slm2') or stored.get('mode')!=config.mode:
+        raise ValueError('棋盘格映射与当前 SLM 不一致。')
+    for key in (config.mode+'_width',config.mode+'_height',config.mode+'_pitch_um','wavelength_nm','gray_inverted'):
+        if stored.get(key)!=getattr(config,key): raise ValueError('棋盘格映射与当前硬件相位尺寸、像素间距或光学设置不同。')
+    if hardware is not None and geometry_hardware(profile.get('hardware'))!=geometry_hardware(hardware):
+        raise ValueError('棋盘格标定的设备、分辨率、ROI、方向或显示设置与当前会话不同。')
+    shape=profile.get('raw_shape',[])
+    if len(shape)!=2 or min(shape)<4 or (raw_shape is not None and list(raw_shape[:2])!=shape):
+        raise ValueError('棋盘格相机原始帧尺寸不一致。')
+    matrix=np.asarray(profile.get('matrix'),float)
+    if matrix.shape!=(3,3) or not np.isfinite(matrix).all() or np.linalg.matrix_rank(matrix)!=3:
+        raise ValueError('棋盘格映射矩阵无效。')
+    physical=np.asarray(profile.get('physical_points_um'),float)
+    camera=np.asarray(profile.get('camera_points_px'),float)
+    if physical.ndim!=3 or physical.shape[0]!=4 or physical.shape[1]<9 or physical.shape[2]!=2 or camera.shape!=physical.shape or not np.isfinite(physical).all() or not np.isfinite(camera).all():
+        raise ValueError('棋盘格缺少拟合、轴向移动或斜向独立验证的原始坐标。')
+    if np.linalg.norm(project(matrix,physical)-camera,axis=-1).max()>config.geometry_tolerance:
+        raise ValueError('棋盘格实测角点误差超过当前允许值。')
+    info=roi_info(matrix,config,shape)
+    if info['coverage']<.99999:
+        raise ValueError('当前目标 ROI 超出相机覆盖区域；请调整采集光路或目标尺寸。')
     return info
 
 

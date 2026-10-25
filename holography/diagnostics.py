@@ -64,7 +64,11 @@ def save_spot_diagnostics(folder, raw, report, point, error=None):
         cv2.rectangle(overlay,(x,y),(x+w-1,y+h-1),(255,40,40),2)
     if report.get('detector')=='radial_rings' and report.get('status')=='accepted':
         center=tuple(round(x) for x in report['position_xy'])
-        cv2.circle(overlay,center,round(report['analysis_radius_px']),(50,255,80),1)
+        if report.get('selected_ellipse'):
+            ellipse=report['selected_ellipse']
+            cv2.ellipse(overlay,(tuple(ellipse['center_xy']),tuple(ellipse['diameters_px']),ellipse['angle_deg']),(50,255,80),2)
+        else:
+            cv2.circle(overlay,center,round(report['analysis_radius_px']),(50,255,80),1)
     Image.fromarray(overlay).save(folder/'candidates.png')
     info['annotation_legend'] = {'green':'Accepted fitted center', 'orange':'Rank 1, NOT accepted',
                                  'red':'Other candidates or search ROI', 'rank':'Descending compact peak signal'}
@@ -75,6 +79,8 @@ GUIDE = """几何标定采集诊断
 
 圆环模式：使用带正负号的背景差分、边缘方向与 180° 中心对称性定位，绿色圆表示分析范围。
 diagnostics.json 包含对称性、角向覆盖、内外环中心差、重复采集质量。difference.png 仍仅展示正差分。
+手选圆环模式的绿色椭圆表示实际拟合边界；selected_ellipse 和 edge_points_xy 保存拟合及边缘点。
+inside_out_attempts 保存自动模式由内向外的各半径定位结果；不同半径中心一致才接受。
 若启用五点移动预检，前五个 probe 是中心/左右/上下；之后九点拟合、五点独立验证。
 movement_check.json 保存预检；exposure_preparation.json 保存自动曝光过程，曝光图也保留原始数组。
 

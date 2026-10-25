@@ -21,6 +21,9 @@ from .probe_phase import focus_phase
 
 
 def run_geometry(job, config, rpc, emit):
+    if config.geometry_method == 'checkerboard':
+        from .checkerboard import run_checkerboard
+        return run_checkerboard(job, config, rpc, emit)
     root = Path(job['output'])
     root.mkdir(parents=True,exist_ok=True)
     (root/'captures').mkdir(exist_ok=True)

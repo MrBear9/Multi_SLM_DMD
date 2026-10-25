@@ -13,22 +13,20 @@ from tools.devices.zkwx_slm.sdk import Monitor, ZhongkeTimeoutSDK
 
 
 class ZhongkeOffsetTests(unittest.TestCase):
-    def test_offsets_use_full_panel_and_preserve_active_image_bounds(self):
+    def test_offsets_allow_crossing_panel_edges(self):
         monitor = Monitor(1, 1920, 0, 1920, 1080, False)
         self.assertEqual(canvas_origin((432, 432), monitor), (744, 324))
         self.assertEqual(canvas_origin((432, 432), monitor, -744, -324), (0, 0))
         self.assertEqual(canvas_origin((432, 432), monitor, 744, 324), (1488, 648))
         for offsets in ((-745, 0), (745, 0), (0, -325), (0, 325)):
-            with self.subTest(offsets=offsets), self.assertRaises(ValueError):
-                canvas_origin((432, 432), monitor, *offsets)
-        with self.assertRaises(ValueError):
-            canvas_origin((1920, 1080), monitor, 1, 0)
+            with self.subTest(offsets=offsets):
+                self.assertEqual(canvas_origin((432,432),monitor,*offsets),(744+offsets[0],324+offsets[1]))
+        self.assertEqual(canvas_origin((1920,1080),monitor,1,0),(1,0))
 
     def test_odd_margin_placement_has_no_rounding_crop(self):
         monitor = Monitor(1, -1920, -100, 7, 5, False)
         self.assertEqual(canvas_origin((2, 2), monitor, 3, 2), (5, 3))
-        with self.assertRaises(ValueError):
-            canvas_origin((2, 2), monitor, 4, 2)
+        self.assertEqual(canvas_origin((2,2),monitor,4,2),(6,3))
 
     def test_canvas_preserves_grayscale_modes_and_zeros_previous_placement(self):
         monitor = Monitor(1, -1920, 100, 6, 4, False)
@@ -162,13 +160,13 @@ class ZhongkeOffsetTests(unittest.TestCase):
                 api.close()
             self.assertFalse(canvas_directory.exists())
 
-    def test_invalid_offset_never_reaches_sdk(self):
+    def test_oversized_image_never_reaches_sdk(self):
         api = ZhongkeTimeoutSDK.__new__(ZhongkeTimeoutSDK)
         api.dll = MagicMock()
         monitor = Monitor(1, 1920, 0, 6, 4, False)
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'phase.bmp'
-            Image.new('L', (2, 2)).save(source)
+            Image.new('L', (7, 4)).save(source)
             with self.assertRaises(ValueError):
                 api.show(source, monitor, 16, 3, 0)
         api.dll.Timeout_ShowImageFromFilePath.assert_not_called()
@@ -203,8 +201,7 @@ class ZhongkeOffsetTests(unittest.TestCase):
             adapter = DisplayAdapter('slm1', {}, [source], demo=True)
             self.assertEqual(adapter.geometry[2:], (1920, 1080))
             adapter.show(source, {'slm1OffsetXSpinBox': 744, 'slm1OffsetYSpinBox': 324})
-            with self.assertRaises(ValueError):
-                adapter.show(source, {'slm1OffsetXSpinBox': 745})
+            adapter.show(source, {'slm1OffsetXSpinBox': 745})
             adapter.close()
 
     def test_sdk_void_binding_matches_vendor_manual(self):

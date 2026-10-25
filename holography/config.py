@@ -40,6 +40,8 @@ class HolographyConfig:
     output_height: int = 256
     target_width_um: float = 1000.
     target_height_um: float = 1000.
+    observation_fov_scale: float = 1.5
+    show_observation_fov: bool = True
     target_fit: str = 'contain'
     reference_source: str = 'dmd'
     sizing_mode: str = 'manual'
@@ -58,6 +60,10 @@ class HolographyConfig:
     relay_magnification: float = 1.
     magnification_source: str = 'manual'
     geometry_mapping: str = 'affine'
+    geometry_method: str = 'probes'
+    checker_cell_px: int = 64
+    checker_columns: int = 7
+    checker_rows: int = 5
     geometry_pattern: str = 'sequential'
     geometry_tolerance: float = 2.
     geometry_independent_range: bool = False
@@ -198,7 +204,10 @@ class HolographyConfig:
 
     def validate(self):
         self.resolve_target_size()
+        checker=self.operation=='geometry' and self.geometry_method=='checkerboard'
         self.validate_grid_policy()
+        if not math.isfinite(self.observation_fov_scale) or not 1<=self.observation_fov_scale<=8:
+            raise ValueError('外围观察视野倍率需要在 1～8 之间。')
         if self.mode not in ('slm1', 'slm2', 'dual') or self.operation not in ('generate', 'feedback', 'calibrate', 'geometry'):
             raise ValueError('未知全息模式或操作。')
         for name, choices in {
@@ -210,6 +219,7 @@ class HolographyConfig:
             'camera_profile': ('connected', 'toup', 'dvp'),
             'magnification_source': ('manual', 'calibrated'),
             'geometry_mapping': ('similarity', 'affine', 'perspective'),
+            'geometry_method': ('probes', 'checkerboard'),
             'geometry_pattern': ('sequential', 'asymmetric'),
             'geometry_assistance': ('automatic', 'manual', 'on_failure'),
             'geometry_detector': ('spot', 'ring'),
@@ -217,10 +227,14 @@ class HolographyConfig:
         }.items():
             if getattr(self, name) not in choices:
                 raise ValueError('无效选项：' + name)
-        if self.camera_optical_path == 'unsupported':
+        if self.camera_optical_path == 'unsupported' and not checker:
             raise ValueError('透镜参与全息传播需要相应传播模型；当前仅支持自由传播及目标平面的中继成像。')
         if self.operation == 'geometry' and self.mode == 'dual':
             raise ValueError('此入口标定单 SLM → 目标平面 → 相机；请选择 SLM1 或 SLM2。')
+        for name, low, high in (('checker_cell_px',8,256),('checker_columns',3,15),('checker_rows',3,15)):
+            value=getattr(self,name)
+            if type(value) is not int or not low<=value<=high:
+                raise ValueError(f'{name} 需要整数 {low}～{high}。')
         for key, value in asdict(self).items():
             if isinstance(value, (int, float)) and not math.isfinite(value):
                 raise ValueError(key + ' 必须是有限数值。')
@@ -246,9 +260,9 @@ class HolographyConfig:
             raise ValueError('圆环分析半径需要在 12～1024 原始相机像素之间。')
         if self.geometry_probe_radius_um <= 0 or self.geometry_axicon_period_um <= 0:
             raise ValueError('圆形相位区半径和轴锥周期必须大于零。')
-        if self.geometry_probe != 'focus' and self.geometry_detector != 'ring':
+        if not checker and self.geometry_probe != 'focus' and self.geometry_detector != 'ring':
             raise ValueError('圆形相位区与轴锥探测图案请使用圆环中心检测。')
-        if self.geometry_probe=='disk' and self.mode!='dual':
+        if not checker and self.geometry_probe=='disk' and self.mode!='dual':
             key=self.active_slms[0]
             radius_limit=(min(self.shape(key))-5)*getattr(self,key+'_pitch_um')/2
             if self.geometry_probe_radius_um>=radius_limit:
@@ -272,9 +286,9 @@ class HolographyConfig:
         if self.settle_seconds < 0 or not 0 <= self.camera_dark < self.camera_white:
             raise ValueError('稳定时间或相机黑白电平无效。')
         for axis, label in (('width', '宽度'), ('height', '高度')):
-            if getattr(self, 'grid_' + axis) * self.sampling_um < self.required_grid_extent(axis):
+            if not checker and getattr(self, 'grid_' + axis) * self.sampling_um < self.required_grid_extent(axis):
                 raise ValueError('ASM 网格' + label + '视野不足，请增大对应网格。')
-        if self.sampling_um > min(getattr(self, k + '_pitch_um') for k in self.active_slms):
+        if not checker and self.sampling_um > min(getattr(self, k + '_pitch_um') for k in self.active_slms):
             raise ValueError('首版全息模型要求数值采样不粗于所用 SLM 像素间距。')
         if self.geometry_profile:
             from .geometry import validate_profile

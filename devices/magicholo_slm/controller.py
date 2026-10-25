@@ -85,12 +85,11 @@ def canvas_origin(
     offset_x: int,
     offset_y: int,
 ) -> tuple[int, int]:
+    """Centre the image, allowing offset clipping without resizing its pixels."""
     left = (display.width - image_size[0]) // 2 + offset_x
     top = (display.height - image_size[1]) // 2 + offset_y
-    if left < 0 or top < 0:
-        raise ValueError("The requested offset moves the phase image outside the display.")
-    if left + image_size[0] > display.width or top + image_size[1] > display.height:
-        raise ValueError("The requested offset moves the phase image outside the display.")
+    if min(image_size) <= 0 or image_size[0] > display.width or image_size[1] > display.height:
+        raise ValueError("The SLM2 phase image size exceeds the display.")
     return left, top
 
 def prepare_canvas(
@@ -106,10 +105,12 @@ def prepare_canvas(
             raise ValueError(f"Image changed or is not 8-bit grayscale: {path}")
         transform = transform or ImageTransform()
         width, height = transform.output_size(image.size)
-        if min(origin) < 0 or origin[0] + width > display.width or origin[1] + height > display.height:
-            raise ValueError('The transformed SLM2 image exceeds the display; cropping is disabled.')
+        if width > display.width or height > display.height:
+            raise ValueError('The transformed SLM2 image size exceeds the display.')
         with transform.apply_pil(image, fill=background) as oriented:
             with Image.new("L", (display.width, display.height), color=background) as canvas:
+                # PIL clips at the panel boundary and leaves exposed pixels at
+                # the configured background; never wrap or resample the phase.
                 canvas.paste(oriented, origin)
                 return canvas.tobytes()
 

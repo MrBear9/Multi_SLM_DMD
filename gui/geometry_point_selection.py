@@ -19,6 +19,12 @@ class GeometryPointSelection:
         self.panel.confirmButton.clicked.connect(lambda: w.ccd_detail.run_action(self.confirm))
         self.panel.recaptureButton.clicked.connect(lambda: w.ccd_detail.run_action(self.recapture))
         self.panel.cancelButton.clicked.connect(controller.cancel)
+        self.panel.selectRingBoundary.toggled.connect(self.ring_selection_changed)
+
+    def ring_selection_changed(self, checked):
+        view=self.window.ccd_detail.view
+        view.roi_ellipse=bool(checked and self.pending is not None)
+        view.viewport().update()
 
     def begin(self, message):
         c = self.controller
@@ -43,6 +49,10 @@ class GeometryPointSelection:
                          self.window.ccdDetailRoiNameEdit.text(),
                          self.window.ccdDetailRoiDrawButton.isChecked())
         self.pending = dict(message)
+        ring=c.config.geometry_method!='checkerboard' and c.config.geometry_detector=='ring'
+        self.panel.selectRingBoundary.setVisible(ring)
+        if not ring: self.panel.selectRingBoundary.setChecked(False)
+        self.ring_selection_changed(self.panel.selectRingBoundary.isChecked())
         self.packet = (raw, metadata, None)
         latest = detail.latest
         detail.selection_locked = True
@@ -64,7 +74,9 @@ class GeometryPointSelection:
             f'几何标定已暂停 · 定位点 {message["point_index"]+1}/{message["point_count"]}'
             f' · 第 {message["repeat_index"]+1} 次采集 · 已冻结本次定位采集图（按设置平均）。\n'
             + (f'说明：{reason}\n' if reason else '')
-            + ('框住中心及数圈完整内环，避开矩形外框；确认后拟合共同中心。可缩放、平移。'
+            + ('框住中心小棋盘的全部角点和白边，为半格平移预留余量；不要只框一个格。'
+               if c.config.geometry_method=='checkerboard' else
+               '框住中心及数圈完整内环，避开矩形外框；确认后拟合共同中心。可缩放、平移。'
                if c.config.geometry_detector=='ring' else
                '框住当前光斑及完整外围（留出余量），确认后由程序拟合中心；可缩放、平移。'))
         self.panel.show()
@@ -94,6 +106,8 @@ class GeometryPointSelection:
                                         width=rect.width(), height=rect.height()))
         document = json.loads(json.dumps(document, ensure_ascii=False))
         search_rect(document, self.packet[0].shape, c.hardware_signature())
+        if not self.panel.selectRingBoundary.isHidden() and self.panel.selectRingBoundary.isChecked():
+            document['ring_selection']='ellipse_boundary'
         self.reply({'action':'select', 'roi':document})
 
     def recapture(self):
@@ -116,6 +130,7 @@ class GeometryPointSelection:
         if self.pending is None:
             return
         self.pending = None
+        self.ring_selection_changed(False)
         self.panel.hide()
         detail = self.window.ccd_detail
         displayed, frozen, roi, name, drawing = self.previous

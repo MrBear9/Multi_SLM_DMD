@@ -4,6 +4,7 @@
  <widget class="QWidget" name="GeometryPointSelection">
   <layout class="QVBoxLayout" name="layout">
    <item><widget class="QLabel" name="instruction"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>标定已暂停：请框选当前光斑及完整外围，然后确认。</string></property></widget></item>
+   <item><widget class="QCheckBox" name="selectRingBoundary"><property name="text"><string>手动指定一条圆环边界（拖动红色椭圆贴合该环，程序拟合中心）</string></property><property name="toolTip"><string>选择中心外一条完整明暗环边界；保留边缘精细拟合及跨帧稳定性检查，不直接使用手画中心。</string></property></widget></item>
    <item><layout class="QHBoxLayout" name="actions">
     <item><widget class="QPushButton" name="confirmButton"><property name="text"><string>确认框选并继续</string></property></widget></item>
     <item><widget class="QLabel" name="exposureLabel"><property name="text"><string>重拍曝光 / μs</string></property></widget></item>
