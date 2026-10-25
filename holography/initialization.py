@@ -8,6 +8,7 @@ import math
 
 import torch
 import torch.nn.functional as F
+from .metrics import amplitude_loss
 
 
 def phase_to_gray(model, relative_phase, key):
@@ -22,12 +23,6 @@ def phase_to_gray(model, relative_phase, key):
     dr = torch.atan2(torch.sin(angles[right]-wanted), torch.cos(angles[right]-wanted)).abs()
     dl = torch.atan2(torch.sin(angles[left]-wanted), torch.cos(angles[left]-wanted)).abs()
     return gray[order[torch.where(dl <= dr, left, right)]]
-
-
-def amplitude_loss(prediction, target):
-    def norm(value):
-        return value / value.mean().clamp_min(1e-8)
-    return (torch.sqrt(norm(prediction)+1e-7)-torch.sqrt(norm(target)+1e-7)).square().mean()
 
 
 @torch.no_grad()

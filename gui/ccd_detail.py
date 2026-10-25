@@ -105,6 +105,8 @@ class CcdDetailController(QtCore.QObject):
         w.ccdDetailSplitter.setSizes([1000, 310])
         self.screen_handle = None
         w.installEventFilter(self)
+        from .ccd_geometry_overlay import CcdGeometryOverlay
+        self.geometry_overlay = CcdGeometryOverlay(self)
         self.update_actions()
 
     def sync_output_directory(self, text):
@@ -194,6 +196,7 @@ class CcdDetailController(QtCore.QObject):
             self.window.ccdDetailFreezeButton.setChecked(False)
         self.window.ccdDetailFreezeButton.setText('冻结画面')
         self.view.clear_image()
+        self.geometry_overlay.refresh()
         self.navigator.image = self.view.image_item.pixmap().toImage()
         self.navigator.update()
         self.window.ccdDetailImageSizeLabel.setText('采集尺寸  — × — px')
@@ -224,6 +227,7 @@ class CcdDetailController(QtCore.QObject):
         orientation_changed = transform != self.view.orientation
         image = preview if preview is not None and transform.is_identity else camera_qimage(raw)
         self.view.set_image(image, transform)
+        self.geometry_overlay.frame_changed()
         self.navigator.image = image
         self.navigator.update()
         h, width = raw.shape[:2]

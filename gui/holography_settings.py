@@ -458,6 +458,9 @@ class HolographySettings(QtCore.QObject):
 
     def update_camera(self, *_):
         u = self.ui
+        detail = getattr(u.controller.window, 'ccd_detail', None)
+        if detail is not None:
+            detail.geometry_overlay.sync(self)
         try:
             if self.raw_path is None:
                 return

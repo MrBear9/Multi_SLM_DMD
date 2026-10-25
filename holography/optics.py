@@ -50,9 +50,15 @@ class OpticalModel(nn.Module):
         self.register_buffer('xy', torch.stack((xx, yy), -1)[None])
         # Smooth positive illumination, anchored to mean amplitude one.
         self.source_log = nn.Parameter(torch.zeros(1, 1, 8, 8))
+        self.source_phase = nn.Parameter(torch.zeros(1, 1, 8, 8))
         self.lut_steps = nn.ParameterDict({k: nn.Parameter(torch.zeros(16)) for k in config.active_slms})
         self.phase_range = nn.ParameterDict({k: nn.Parameter(torch.tensor(0.)) for k in config.active_slms})
         self.aberrations = nn.ParameterDict({k: nn.Parameter(torch.zeros(5)) for k in config.active_slms})
+        # A small, smooth effective target-plane field, not a pixel-wise target
+        # image memorizer. Coherent leakage interferes before intensity detection.
+        self.background_real = nn.Parameter(torch.zeros(1,1,8,8))
+        self.background_imag = nn.Parameter(torch.zeros(1,1,8,8))
+        self.background_incoherent = nn.Parameter(torch.tensor(-12.))
         propagators = {}
         for key in config.active_slms:
             h, w = config.shape(key)
@@ -113,7 +119,10 @@ class OpticalModel(nn.Module):
         first = self.config.active_slms[0]
         mask = getattr(self, first + '_aperture')
         amp = amp / ((amp*mask).sum() / mask.sum()).clamp_min(1e-8)
-        field = (amp*mask).to(torch.complex64)
+        source_phase = F.interpolate(self.source_phase, size=self.config.grid_shape,
+                                     mode='bilinear', align_corners=False)
+        source_phase = source_phase - (source_phase*mask).sum()/mask.sum()
+        field = torch.polar(amp*mask, source_phase)
         incident = {}
         for key in self.config.active_slms:
             if return_incident:
@@ -124,12 +133,28 @@ class OpticalModel(nn.Module):
 
     def forward(self, gray_maps):
         field = self.propagated_field(gray_maps)
-        return F.grid_sample(field.abs().square(), self.output_grid, mode='bilinear', align_corners=False)
+        if self.config.model_background:
+            real=F.interpolate(self.background_real,size=self.config.grid_shape,mode='bilinear',align_corners=False)
+            imag=F.interpolate(self.background_imag,size=self.config.grid_shape,mode='bilinear',align_corners=False)
+            field=field+torch.complex(real,imag)
+        intensity=F.grid_sample(field.abs().square(), self.output_grid, mode='bilinear', align_corners=False)
+        if self.config.model_background:
+            intensity=intensity+F.softplus(self.background_incoherent)
+        return intensity
 
     def regularization(self):
         smooth = (self.source_log[..., 1:, :]-self.source_log[..., :-1, :]).square().mean()
         smooth += (self.source_log[..., :, 1:]-self.source_log[..., :, :-1]).square().mean()
         penalty = .01*smooth + .001*self.source_log.square().mean()
+        penalty = penalty + .001*self.source_phase.square().mean() + .01*(
+            (self.source_phase[...,1:,:]-self.source_phase[...,:-1,:]).square().mean()
+            +(self.source_phase[...,:,1:]-self.source_phase[...,:,:-1]).square().mean())
+        if self.config.model_background:
+            for value in (self.background_real,self.background_imag):
+                penalty=penalty+.001*value.square().mean()
+                penalty=penalty+.01*((value[...,1:,:]-value[...,:-1,:]).square().mean()
+                    +(value[...,:,1:]-value[...,:,:-1]).square().mean())
+            penalty=penalty+.001*F.softplus(self.background_incoherent)
         for key in self.config.active_slms:
             d = self.lut_steps[key]
             penalty = penalty + .001*(d[1:]-d[:-1]).square().mean() + .0001*self.aberrations[key].square().mean()

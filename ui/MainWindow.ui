@@ -5523,6 +5523,23 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
               </widget>
              </item>
              <item>
+              <widget class="QGroupBox" name="ccdDetailCalibrationGroupBox">
+               <property name="title"><string>全息标定区域</string></property>
+               <property name="toolTip"><string>应用全息几何标定后同步显示。外围倍率沿用全息窗口；此处显示开关独立，不改变目标尺寸、手动标注或硬件采集 ROI。</string></property>
+               <layout class="QVBoxLayout" name="ccdDetailCalibrationLayout">
+                <item><layout class="QHBoxLayout" name="ccdDetailCalibrationChecks">
+                 <item><widget class="QCheckBox" name="ccdDetailCalibrationTargetCheckBox"><property name="text"><string>目标 ROI</string></property><property name="checked"><bool>true</bool></property></widget></item>
+                 <item><widget class="QCheckBox" name="ccdDetailCalibrationFovCheckBox"><property name="text"><string>外围视野</string></property><property name="checked"><bool>true</bool></property></widget></item>
+                </layout></item>
+                <item><layout class="QHBoxLayout" name="ccdDetailCalibrationButtons">
+                 <item><widget class="QPushButton" name="ccdDetailCalibrationTargetButton"><property name="text"><string>定位目标</string></property></widget></item>
+                 <item><widget class="QPushButton" name="ccdDetailCalibrationFovButton"><property name="text"><string>定位视野</string></property></widget></item>
+                </layout></item>
+                <item><widget class="QLabel" name="ccdDetailCalibrationStatusLabel"><property name="text"><string>未应用全息标定</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+               </layout>
+              </widget>
+             </item>
+             <item>
               <widget class="QGroupBox" name="ccdDetailRoiGroupBox">
                <property name="title">
                 <string>ROI 标注</string>

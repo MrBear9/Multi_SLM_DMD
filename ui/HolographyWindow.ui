@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>全息生成与模型标定</string>
   </property>
-  <layout class="QVBoxLayout" name="mainLayout" stretch="0,0,0,0,1,0,0,0">
+  <layout class="QVBoxLayout" name="mainLayout" stretch="0,0,0,0,1,0,0,0,0">
    <item>
     <layout class="QHBoxLayout" name="modeLayout">
      <item>
@@ -1016,7 +1016,7 @@
               <item row="13" column="0">
                <widget class="QLabel" name="feedback_everyLabel">
                 <property name="text">
-                 <string>回环采集间隔 / 步</string>
+                 <string>回环逐步采集 / 步</string>
                 </property>
                </widget>
               </item>
@@ -1026,10 +1026,10 @@
                  <number>1</number>
                 </property>
                 <property name="maximum">
-                 <number>1000</number>
+                 <number>1</number>
                 </property>
                 <property name="value">
-                 <number>5</number>
+                 <number>1</number>
                 </property>
                 <property name="keyboardTracking">
                  <bool>false</bool>
@@ -2328,6 +2328,400 @@
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="feedbackPage">
+          <attribute name="title">
+           <string>回环与模型</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="feedbackPageLayout">
+           <item>
+            <widget class="QGroupBox" name="feedbackGroup">
+             <property name="title">
+              <string>实拍接受与模型校正</string>
+             </property>
+             <layout class="QGridLayout" name="feedbackGrid">
+              <item row="0" column="0" colspan="2">
+               <widget class="QCheckBox" name="feedback_auto_calibrate">
+                <property name="text">
+                 <string>无模型时先自动标定</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+                <property name="toolTip">
+                 <string>未载入模型时先采集和拟合；验证未通过将停止回环。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2" colspan="2">
+               <widget class="QCheckBox" name="feedback_online_model">
+                <property name="text">
+                 <string>回环中更新模型</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>按实拍修正模型，只有验证改善才替换；与相位更新分开进行。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="model_background">
+                <property name="text">
+                 <string>学习平滑背景光场</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+                <property name="toolTip">
+                 <string>包含低分辨率相干附加光场和非相干背景；不代表唯一测出了零级光。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="feedback_verify_repeatsLabel">
+                <property name="text">
+                 <string>每个候选复拍次数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QSpinBox" name="feedback_verify_repeats">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>5</number>
+                </property>
+                <property name="value">
+                 <number>2</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>每次复拍内部仍使用成像与采集的平均帧数。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="feedback_max_retriesLabel">
+                <property name="text">
+                 <string>每步最多缩步重试</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="feedback_max_retries">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>4</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>失败恢复相位和 Adam 状态后缩小步长。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="feedback_lr_decayLabel">
+                <property name="text">
+                 <string>拒绝后的步长倍率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QDoubleSpinBox" name="feedback_lr_decay">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.1</double>
+                </property>
+                <property name="maximum">
+                 <double>0.9</double>
+                </property>
+                <property name="value">
+                 <double>0.5</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string />
+                </property>
+                <property name="singleStep">
+                 <double>.1</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="feedback_min_lrLabel">
+                <property name="text">
+                 <string>最小相位学习率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="feedback_min_lr">
+                <property name="decimals">
+                 <number>7</number>
+                </property>
+                <property name="minimum">
+                 <double>1e-07</double>
+                </property>
+                <property name="maximum">
+                 <double>1.0</double>
+                </property>
+                <property name="value">
+                 <double>0.0001</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string />
+                </property>
+                <property name="singleStep">
+                 <double>.0001</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="feedback_min_improvementLabel">
+                <property name="text">
+                 <string>最小实拍改善量</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="3">
+               <widget class="QDoubleSpinBox" name="feedback_min_improvement">
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="minimum">
+                 <double>0.0</double>
+                </property>
+                <property name="maximum">
+                 <double>0.2</double>
+                </property>
+                <property name="value">
+                 <double>0.001</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>绝对误差下降门槛；重复采集的变化更大时采用实测变化量。</string>
+                </property>
+                <property name="singleStep">
+                 <double>.001</double>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="feedback_patienceLabel">
+                <property name="text">
+                 <string>连续未改善停止次数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QSpinBox" name="feedback_patience">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string />
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="model_learning_rateLabel">
+                <property name="text">
+                 <string>模型学习率</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="3">
+               <widget class="QDoubleSpinBox" name="model_learning_rate">
+                <property name="decimals">
+                 <number>6</number>
+                </property>
+                <property name="minimum">
+                 <double>1e-06</double>
+                </property>
+                <property name="maximum">
+                 <double>0.05</double>
+                </property>
+                <property name="value">
+                 <double>0.003</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>独立于相位学习率。</string>
+                </property>
+                <property name="singleStep">
+                 <double>.001</double>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="model_online_everyLabel">
+                <property name="text">
+                 <string>模型更新间隔 / 候选步</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QSpinBox" name="model_online_every">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>10</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>候选无法改善时也会尝试更新；每次更新都经过独立验证。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="2">
+               <widget class="QLabel" name="model_online_epochsLabel">
+                <property name="text">
+                 <string>每次在线拟合轮数</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="3">
+               <widget class="QSpinBox" name="model_online_epochs">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string />
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="model_replay_sizeLabel">
+                <property name="text">
+                 <string>近期训练样本上限</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QSpinBox" name="model_replay_size">
+                <property name="minimum">
+                 <number>8</number>
+                </property>
+                <property name="maximum">
+                 <number>256</number>
+                </property>
+                <property name="value">
+                 <number>32</number>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>保留初始多样相位与近期采集，验证组不参与训练。</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="2">
+               <widget class="QLabel" name="model_validation_improvementLabel">
+                <property name="text">
+                 <string>模型验证最小相对改善</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="3">
+               <widget class="QDoubleSpinBox" name="model_validation_improvement">
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>0.001</double>
+                </property>
+                <property name="maximum">
+                 <double>0.5</double>
+                </property>
+                <property name="value">
+                 <double>0.02</double>
+                </property>
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>默认 0.02 表示 2%；选择组和独立验证组都要达到。</string>
+                </property>
+                <property name="singleStep">
+                 <double>.01</double>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="feedbackHelp">
+             <property name="text">
+              <string>回环每次更新均实拍验证；变差则回退。模型采集组数和预标定轮数在“光路与训练”设置。已标定模型在“文件与环境”载入。</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="feedbackSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
          <widget class="QWidget" name="filesPage">
           <attribute name="title">
            <string>文件与环境</string>
@@ -2632,6 +3026,38 @@
          </widget>
         </item>
        </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="metricsLayout">
+     <item>
+      <widget class="QLabel" name="cameraLossLabel">
+       <property name="text">
+        <string>实拍误差：—</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="bestLossLabel">
+       <property name="text">
+        <string>最佳实拍：—</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="modelLossLabel">
+       <property name="text">
+        <string>模型验证：—</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="simulationLossLabel">
+       <property name="text">
+        <string>模拟误差：—</string>
+       </property>
       </widget>
      </item>
     </layout>

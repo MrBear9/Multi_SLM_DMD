@@ -1,6 +1,7 @@
 """Designer-editable child UI; intentionally has no training-runtime imports."""
 from dataclasses import asdict, fields
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -72,6 +73,8 @@ class HolographyWindow(QtWidgets.QDialog):
                      'target_width_um','target_height_um'):
             getattr(self,name).valueChanged.connect(self.update_grid_report)
         self.initialization.currentIndexChanged.connect(self.update_controls)
+        self.feedback_auto_calibrate.toggled.connect(self.update_controls)
+        self.feedback_online_model.toggled.connect(self.update_controls)
         self.update_controls()
 
     def use_geometry_search_roi(self):
@@ -307,8 +310,19 @@ class HolographyWindow(QtWidgets.QDialog):
         self.cameraCenterButton.setEnabled(live)
         for name in ('target','targetBrowse','steps','feedback_every'):
             getattr(self,name).setEnabled(self.operation.currentIndex()!=2)
-        self.samples.setEnabled(self.operation.currentIndex()==2)
-        self.epochs.setEnabled(self.operation.currentIndex()==2)
+        feedback=self.operation.currentIndex()==1
+        fitting=self.operation.currentIndex()==2 or (feedback and (self.feedback_auto_calibrate.isChecked() or self.feedback_online_model.isChecked()))
+        self.samples.setEnabled(fitting)
+        self.epochs.setEnabled(self.operation.currentIndex()==2 or (feedback and self.feedback_auto_calibrate.isChecked()))
+        self.feedback_every.setEnabled(False)
+        for name in ('feedback_auto_calibrate','feedback_online_model','feedback_max_retries',
+                     'feedback_lr_decay','feedback_min_lr','feedback_min_improvement',
+                     'feedback_verify_repeats','feedback_patience'):
+            getattr(self,name).setEnabled(feedback)
+        for name in ('model_online_every','model_online_epochs','model_replay_size'):
+            getattr(self,name).setEnabled(feedback and self.feedback_online_model.isChecked())
+        self.model_learning_rate.setEnabled(fitting)
+        self.model_validation_improvement.setEnabled(fitting)
         if hasattr(self,'settings'):
             self.settings.update_controls()
 
@@ -321,6 +335,17 @@ class HolographyWindow(QtWidgets.QDialog):
         if not pixmap.isNull():
             self.pixmaps[kind] = pixmap
             self.refresh_previews()
+
+    def update_metrics(self, message=None):
+        fields={'camera_loss':('cameraLossLabel','实拍误差'),'best_loss':('bestLossLabel','最佳实拍'),
+                'model_loss':('modelLossLabel','模型验证'),'simulation_loss':('simulationLossLabel','模拟误差')}
+        for key,(name,label) in fields.items():
+            if message is None:
+                getattr(self,name).setText(label+'：—')
+            elif key in message:
+                value=float(message[key])
+                if not math.isfinite(value):raise ValueError('误差记录包含非有限数值。')
+                getattr(self,name).setText(f'{label}：{value:.6f}')
 
     def refresh_previews(self, *_):
         target_key = ('target','input','adapted')[self.targetDesignViewComboBox.currentIndex()]

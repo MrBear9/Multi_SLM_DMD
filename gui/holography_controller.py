@@ -32,6 +32,11 @@ class HolographyCaptureTask(CalibrationTask):
             path = Path(self.payload['capture_path'])
             np.save(path, image)
             path.with_suffix('.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
+            for frame in metadata:
+                if frame.get('auto') or abs(frame.get('exposure',parameters['exposure'])-parameters['exposure'])>max(1.,parameters['exposure']*.01):
+                    raise ValueError('采集帧曝光尚未稳定或自动曝光仍开启；原始帧已保存，请重试。')
+                if abs(frame.get('gain',parameters.get('gain',1.))-parameters.get('gain',1.))>.01:
+                    raise ValueError('采集帧增益与固定设置不同；原始帧已保存。')
             self.result = {'path': str(path), 'exposure_us':parameters.get('exposure')}
         except Exception as exc:
             self.error = str(exc)
@@ -187,6 +192,7 @@ class HolographyController(QtCore.QObject):
         ui.preferences.setValue('worker',str(worker))
         ui.preferences.setValue('output',ui.outputPath.text())
         ui.progress.setValue(0)
+        ui.update_metrics()
         ui.update_controls()
         w.update_actions()
         self.log('开始；结果目录：'+str(root))
@@ -209,7 +215,7 @@ class HolographyController(QtCore.QObject):
         w.camera.submit('parameters',exposure,w.camera_parameters['gain'],False)
         self.log(f'已请求重建预览曝光 {exposure:g} μs，并关闭自动曝光。')
 
-    def hardware_signature(self, exposure=None):
+    def hardware_signature(self, exposure=None, *, include_illumination=True):
         w = self.window
         values = read_values(w)
         names = [name for name in values if (name.startswith(('slm1','slm2','dmd','ccd','toupcam'))
@@ -218,7 +224,7 @@ class HolographyController(QtCore.QObject):
                     'dmd_input':values.get('dmdInputPathEdit',''), 'dmd_sha256':None,
                     'displays':{key:device.display._asdict() for key,device in w.devices.items()
                                 if hasattr(getattr(device,'display',None),'_asdict')}}
-        if 'dmd' in w.devices:
+        if include_illumination and 'dmd' in w.devices:
             # DMD current image and test-pattern state affect illumination.
             qimage = w.images.get('dmd')
             if qimage is not None:
@@ -272,6 +278,8 @@ class HolographyController(QtCore.QObject):
             self.worker_error = message.get('message','训练失败')
         elif kind == 'progress':
             self.dialog.progress.setValue(int(message['value']))
+        elif kind == 'metrics':
+            self.dialog.update_metrics(message)
         elif kind == 'geometry_exposure_locked':
             if self.stopping or self.process_done:
                 return
@@ -293,8 +301,24 @@ class HolographyController(QtCore.QObject):
             self.received_result = True
             if path.name == 'result.json':
                 self.result_path = path
+                info=json.loads(path.read_text(encoding='utf-8'))
+                model_path=info.get('model_path')
+                if model_path and not self.stopping:
+                    # Existing input models may live outside this run; new
+                    # versions must stay inside the worker result directory.
+                    model_path=Path(model_path).resolve()
+                    if str(model_path)!=str(Path(self.config.model_path).resolve()):
+                        model_path=self.safe_path(str(model_path))
+                    model_info=json.loads(model_path.read_text(encoding='utf-8'))
+                    if model_info.get('validated'):
+                        self.dialog.model_path.setText(str(model_path))
             elif path.name == 'geometry.json':
                 self.geometry_result = path
+            elif path.name == 'model.json' and not self.stopping:
+                info=json.loads(path.read_text(encoding='utf-8'))
+                if info.get('validated'):
+                    self.dialog.model_path.setText(str(path))
+                    self.log('已填入通过验证的模型路径；可切换到相机回环。')
         elif kind == 'capture':
             if self.stopping:
                 return

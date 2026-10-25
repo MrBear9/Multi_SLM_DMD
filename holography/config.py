@@ -99,13 +99,30 @@ class HolographyConfig:
     average_frames: int = 3
     discard_frames: int = 3
     capture_timeout: float = 20.
-    feedback_every: int = 5
+    feedback_every: int = 1
+    feedback_auto_calibrate: bool = True
+    feedback_online_model: bool = False
+    feedback_max_retries: int = 4
+    feedback_lr_decay: float = .5
+    feedback_min_lr: float = .0001
+    feedback_min_improvement: float = .001
+    feedback_verify_repeats: int = 2
+    feedback_patience: int = 3
+    model_learning_rate: float = .003
+    model_online_every: int = 10
+    model_online_epochs: int = 3
+    model_replay_size: int = 32
+    model_validation_improvement: float = .02
+    model_background: bool = True
     gray_inverted: bool = True
     seed: int = 17
 
     @classmethod
     def from_dict(cls, values):
         data = dict(values)
+        # Feedback now verifies every proposed update; old intervals cannot
+        # re-enable extrapolation with a stale physical residual.
+        data['feedback_every'] = 1
         if 'output_size' in data:
             side = data.pop('output_size')
             data.setdefault('output_width', side)
@@ -206,8 +223,24 @@ class HolographyConfig:
         self.resolve_target_size()
         checker=self.operation=='geometry' and self.geometry_method=='checkerboard'
         self.validate_grid_policy()
+        for name in ('feedback_auto_calibrate','feedback_online_model','model_background'):
+            if type(getattr(self,name)) is not bool:
+                raise ValueError(f'{name} 需要布尔值。')
         if not math.isfinite(self.observation_fov_scale) or not 1<=self.observation_fov_scale<=8:
             raise ValueError('外围观察视野倍率需要在 1～8 之间。')
+        for name,low,high in (('feedback_max_retries',0,10),('feedback_verify_repeats',1,5),
+                ('feedback_patience',1,10),('model_online_every',1,1000),
+                ('model_online_epochs',1,100),('model_replay_size',8,256)):
+            if type(getattr(self,name)) is not int or not low<=getattr(self,name)<=high:
+                raise ValueError(f'{name} 需要整数 {low}～{high}。')
+        for name,low,high in (('feedback_lr_decay',.1,.9),('feedback_min_lr',1e-7,1.),
+                ('feedback_min_improvement',0.,.2),('model_learning_rate',1e-6,.05),
+                ('model_validation_improvement',.001,.5)):
+            value=getattr(self,name)
+            if not math.isfinite(value) or not low<=value<=high:
+                raise ValueError(f'{name} 需要在 {low}～{high} 之间。')
+        if self.operation=='feedback' and (self.feedback_every!=1 or self.feedback_min_lr>self.learning_rate):
+            raise ValueError('回环必须逐步实拍；最小步长不能大于初始学习率。')
         if self.mode not in ('slm1', 'slm2', 'dual') or self.operation not in ('generate', 'feedback', 'calibrate', 'geometry'):
             raise ValueError('未知全息模式或操作。')
         for name, choices in {

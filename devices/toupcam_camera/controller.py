@@ -155,7 +155,9 @@ class ToupCamera:
             self.call('put_ExpoTime', round(exposure))
             self.call('put_ExpoAGain', round(gain*100))
         self.ensure_fresh(time.monotonic())
-        return self.parameters()
+        self.cached_parameters = self.parameters()
+        self.next_status = 0.
+        return dict(self.cached_parameters)
 
     def ensure_fresh(self, after):
         """Flush SDK/DDR backlog after a pattern settles; discard the in-flight frame."""

@@ -35,6 +35,7 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         self.roi_ellipse = False
         self.roi_name = 'ROI 01'
         self.show_roi = True
+        self.calibration_polygons = []
         self.draw_mode = False
         self.action = None
         self.setDragMode(self.ScrollHandDrag)
@@ -63,6 +64,7 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         self.image_item.setPixmap(QtGui.QPixmap())
         self.setSceneRect(QtCore.QRectF())
         self.set_roi(None)
+        self.set_calibration_polygons([])
         self.cursorChanged.emit(None)
         self.viewChanged.emit()
 
@@ -125,6 +127,43 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         self.roi = QtCore.QRect(rect) if rect is not None else None
         self.viewport().update()
         self.roiChanged.emit(self.roi)
+
+    def set_calibration_polygons(self, polygons):
+        # Separate read-only raw-coordinate overlays; never become the editable ROI.
+        self.calibration_polygons = polygons
+        self.viewport().update()
+        self.viewChanged.emit()
+
+    def focus_polygon(self, points):
+        polygon = QtGui.QPolygonF([QtCore.QPointF(*p) for p in points])
+        bounds = polygon.boundingRect().intersected(self.sceneRect())
+        if bounds.isEmpty():
+            raise ValueError('标定区域不在当前相机画面内。')
+        oriented = orientation_matrix(self.orientation).mapRect(bounds)
+        scale = min((self.viewport().width()-24)/oriented.width(),
+                    (self.viewport().height()-24)/oriented.height()) * .9
+        self.set_zoom(scale*self.viewport().devicePixelRatioF())
+        self.centerOn(bounds.center())
+        self.viewChanged.emit()
+
+    def draw_calibration(self, painter, labels=False):
+        painter.save()
+        painter.setClipRect(self.sceneRect())
+        painter.setBrush(QtCore.Qt.NoBrush)
+        for points, color, style, label in self.calibration_polygons:
+            polygon = QtGui.QPolygonF([QtCore.QPointF(*p) for p in points])
+            pen = QtGui.QPen(QtGui.QColor(color), 2, style)
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+            painter.drawPolygon(polygon)
+            if labels:
+                painter.save()
+                painter.setClipping(False)
+                anchor = self.mapFromScene(polygon[0])
+                painter.resetTransform()
+                painter.drawText(max(4,anchor.x()),max(18,anchor.y()-8),label)
+                painter.restore()
+        painter.restore()
 
     def _handles(self):
         r = QtCore.QRectF(self.roi)
@@ -214,6 +253,7 @@ class CcdDetailView(QtWidgets.QGraphicsView):
         super().leaveEvent(event)
 
     def drawForeground(self, painter, rect):
+        self.draw_calibration(painter, labels=True)
         if self.roi is None or not self.show_roi:
             return
         pen = QtGui.QPen(QtGui.QColor('#ff3b30'), 2)
@@ -268,6 +308,7 @@ class FrameNavigator(QtWidgets.QWidget):
         painter.setTransform(self.mapping)
         painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
         painter.drawImage(0, 0, self.image)
+        self.view.draw_calibration(painter)
         visible = self.view.mapToScene(self.view.viewport().rect()).intersected(
             QtGui.QPolygonF(QtCore.QRectF(self.image.rect())))
         pen = QtGui.QPen(QtGui.QColor('#48d9dc'), 1.5)
