@@ -46,6 +46,7 @@ class CcdDetailController(QtCore.QObject):
         super().__init__(window)
         self.window = w = window
         self.latest = self.displayed = None
+        self.overview_viewport = None
         self.frozen = False
         self.cursor_point = None
         self.camera = {}
@@ -81,9 +82,6 @@ class CcdDetailController(QtCore.QObject):
         w.ccdDetailRoiDrawButton.toggled.connect(lambda checked: self.view.set_draw_mode(True) if checked else None)
         w.ccdDetailFreezeButton.toggled.connect(self.set_frozen)
         w.ccdDetailBackButton.clicked.connect(lambda: w.mainTabWidget.setCurrentWidget(w.previewPage))
-        w.ccdZoomComboBox.currentIndexChanged.connect(self.overview_zoom_changed)
-        # Selecting an already-selected 1:1 entry must also reopen this page.
-        w.ccdZoomComboBox.activated[int].connect(self.overview_zoom_changed)
         w.mainTabWidget.currentChanged.connect(self.page_changed)
         w.ccdDetailRoiApplyButton.clicked.connect(lambda: self.run_action(self.apply_roi))
         w.ccdDetailRoiClearButton.clicked.connect(lambda: self.view.set_roi(None))
@@ -191,6 +189,7 @@ class CcdDetailController(QtCore.QObject):
 
     def clear(self):
         self.latest = self.displayed = None
+        self.overview_viewport = None
         self.frozen = False
         with QtCore.QSignalBlocker(self.window.ccdDetailFreezeButton):
             self.window.ccdDetailFreezeButton.setChecked(False)
@@ -239,10 +238,10 @@ class CcdDetailController(QtCore.QObject):
         self.update_actions()
         self.update_status()
 
-    def overview_zoom_changed(self, index):
-        if index == 1 and self.window.ccdDetailAutoOpenCheckBox.isChecked():
-            self.window.mainTabWidget.setCurrentWidget(self.window.ccdDetailPage)
-            self.view.set_zoom(1)
+    def overview_image(self, size):
+        if self.latest is None or self.overview_viewport is None:
+            return None
+        return self.overview_viewport.render(self.latest,size)
 
     def page_changed(self, index):
         if self.window.mainTabWidget.currentWidget() is self.window.ccdDetailPage:
@@ -284,6 +283,10 @@ class CcdDetailController(QtCore.QObject):
         with QtCore.QSignalBlocker(self.window.ccdDetailZoomSpinBox):
             self.window.ccdDetailZoomSpinBox.setValue(self.view.zoom*100)
         self.navigator.update()
+        # Save only the visible viewport geometry, never the frozen image.
+        if self.displayed is not None and self.window.mainTabWidget.currentWidget() is self.window.ccdDetailPage:
+            from .ccd_viewport_preview import DetailViewport
+            self.overview_viewport = DetailViewport.capture(self.view,self.displayed)
 
     def show_roi(self, checked):
         self.view.show_roi = checked

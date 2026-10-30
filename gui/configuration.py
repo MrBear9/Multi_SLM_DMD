@@ -28,8 +28,7 @@ def editors(window):
     return {w.objectName(): w for cls in EDITORS for w in window.findChildren(cls)
             if w.window() is window.window()
             and w.objectName() and not w.objectName().startswith('qt_')
-            and (not w.objectName().startswith('ccdDetail')
-                 or w.objectName() == 'ccdDetailAutoOpenCheckBox')
+            and not w.objectName().startswith('ccdDetail')
             and not w.objectName().endswith('FrameSpinBox')}
 
 
@@ -53,6 +52,9 @@ def apply_values(window, values):
         raise ValueError('配置 values 必须是 JSON 对象。')
     controls = editors(window)
     values = dict(values)
+    values.pop('ccdDetailAutoOpenCheckBox', None)  # Retired automatic page switching.
+    if values.get('ccdZoomComboBox') == '1:1 像素':
+        values['ccdZoomComboBox'] = '跟随第三页视野'
     for name, default in {'f4321EnabledCheckBox': False, 'toupcamEnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
                           'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
                           'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
@@ -162,10 +164,10 @@ def pil_image_qimage(image: Image.Image) -> QtGui.QImage:
                             QtGui.QImage.Format_RGBA8888).copy()
 
 
-def camera_qimage(image: np.ndarray) -> QtGui.QImage:
+def camera_qimage(image: np.ndarray, *, maximum=None) -> QtGui.QImage:
     # Preview-only conversion. Capture files retain the original frame values.
     if image.dtype != np.uint8:
-        maximum = float(image.max()) if image.size else 1.0
+        maximum = maximum if maximum is not None else (float(image.max()) if image.size else 1.0)
         image = np.clip(image.astype(np.float32) * (255.0 / max(maximum, 1)), 0, 255).astype(np.uint8)
     if image.ndim == 2:
         data = np.ascontiguousarray(image)

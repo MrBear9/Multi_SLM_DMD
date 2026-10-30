@@ -520,7 +520,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <double>3600</double>
                    </property>
                    <property name="value">
-                    <double>5</double>
+                    <double>1</double>
                    </property>
                    <property name="suffix">
                     <string> s</string>
@@ -714,13 +714,10 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <double>3600</double>
                    </property>
                    <property name="value">
-                    <double>5</double>
+                    <double>1</double>
                    </property>
                    <property name="suffix">
                     <string> s</string>
-                   </property>
-                   <property name="enabled">
-                    <bool>false</bool>
                    </property>
                    <property name="toolTip">
                     <string>双 SLM 同步播放时使用 SLM1 的间隔；取消同步后可单独设置。</string>
@@ -2593,7 +2590,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
              <string>双 SLM 同步播放</string>
             </property>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -4769,7 +4766,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                       </item>
                       <item>
                        <property name="text">
-                        <string>1:1 像素</string>
+                        <string>跟随第三页视野</string>
                        </property>
                       </item>
                      </widget>
@@ -5725,16 +5722,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 </widget>
                </item>
               </layout>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="ccdDetailAutoOpenCheckBox">
-               <property name="text">
-                <string>第二页选 1:1 时打开此页</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
              </item>
              <item>
               <spacer name="ccdDetailSidebarSpacer">

@@ -1176,17 +1176,28 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.mainTabWidget.currentWidget() is not self.previewPage:
                 return
             array, metadata = self.camera_preview_packet
-            if self.ccdZoomComboBox.currentIndex() == 0:
-                # Only the overview is downsampled; captures and detail retain raw pixels.
-                step = max(1, max(array.shape[:2]) // max(1, self.ccdPreviewLabel.width()*2))
-                array = np.ascontiguousarray(array[::step, ::step])
+            if self.ccdZoomComboBox.currentIndex() == 1:
+                latest = self.ccd_detail.latest
+                region = (self.ccd_detail.overview_image(self.ccdPreviewLabel.contentsRect().size())
+                          if latest is not None and latest[1].get('frame_id') == metadata.get('frame_id') else None)
+                if region is not None:
+                    self.images['ccd'] = region
+                    set_preview(self.ccdPreviewLabel,region,True)
+                    self.ccdPreviewLabel.setToolTip('实时跟随第三页最后可见视野；第三页冻结不影响此处更新。')
+                    return
+                self.ccdPreviewLabel.setToolTip('尚无匹配的第三页视野，暂显示全图。请到第三页缩放或平移。')
+            else:
+                self.ccdPreviewLabel.setToolTip('完整实时画面；可选择“跟随第三页视野”查看局部。')
+            # Only the overview is downsampled; captures and detail retain raw pixels.
+            step = max(1, max(array.shape[:2]) // max(1, self.ccdPreviewLabel.width()*2))
+            array = np.ascontiguousarray(array[::step, ::step])
             self.images['ccd'] = camera_qimage(array)
         if key in self.images:
             image = self.images[key]
             if key in DISPLAY_KEYS and getattr(self, key + 'PreviewModeComboBox').currentIndex() == 0:
                 image = self.source_images.get(key, image)
             set_preview(getattr(self, key + 'PreviewLabel'), image,
-                        getattr(self, key + 'ZoomComboBox').currentIndex() == 0)
+                        key == 'ccd' or getattr(self, key + 'ZoomComboBox').currentIndex() == 0)
 
     def refresh_all_previews(self):
         for key in self.images:

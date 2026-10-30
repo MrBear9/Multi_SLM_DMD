@@ -41,8 +41,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--interval",
         type=float,
-        default=5.0,
-        help="Seconds per image for multi-image playback (default: 5).",
+        default=1.0,
+        help="Seconds per image for multi-image playback (default: 1).",
     )
     parser.add_argument(
         "--monitor",
