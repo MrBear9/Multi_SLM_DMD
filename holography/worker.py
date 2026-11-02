@@ -40,6 +40,9 @@ def run(job, rpc=None):
             raise InterruptedError('硬件会话已关闭。')
         return json.loads(line)
 
+    if config.operation == 'lut':
+        from .lut_worker import run_lut
+        return run_lut(job,config,request,emit)
     if config.geometry_profile and config.live:
         from .geometry import validate_profile
         validate_profile(config.geometry_profile, config, hardware=job.get('hardware'))
@@ -59,6 +62,10 @@ def run(job, rpc=None):
     emit('log', message=f'计算视野预留倍率 {config.grid_margin:g}；网格单轴上限 {config.grid_limit}；'
          f"单个 FFT 复数数组约 {report['fft_array_mib']:.0f} MiB，训练总占用更高。")
     model = OpticalModel(config).to(device)
+    for key in config.active_slms:
+        source = getattr(config,key+'_lut_source')
+        emit('log',message=f'{key} LUT：'+({'model':'自动：无模型时为理想曲线，允许模型拟合',
+            'ideal':'固定理想线性曲线','measured':'独立实测曲线（固定）'}[source]))
     emit('log', message=f'目标计算：{config.output_width}×{config.output_height}；'
          f'目标采样：{config.target_width_um/config.output_width:g}×'
          f'{config.target_height_um/config.output_height:g} μm')
@@ -157,6 +164,10 @@ def run(job, rpc=None):
         path = root/key/'phase.png'
         Image.fromarray(np.uint8(np.rint(value.cpu().numpy().squeeze()*255))).save(path)
         paths[key] = str(path)
+        with torch.no_grad():
+            used_curve = model.phase(torch.linspace(0,1,256,device=device),key).cpu().numpy()
+        np.savetxt(root/(key+'_lut_used.csv'),np.column_stack((np.arange(256),used_curve-used_curve[0])),
+                   delimiter=',',header='gray,relative_phase_rad',comments='',fmt=['%d','%.9g'])
     with torch.no_grad():
         simulated = model(final).cpu().numpy().squeeze()
     np.save(root/'simulation.npy', simulated)
@@ -165,6 +176,7 @@ def run(job, rpc=None):
     result = {'schema': 1, 'config': asdict(config), 'paths': paths,
               'loss_history': history, 'verified_camera_loss': final_score,
               'initialization': initialization_info,
+              'phase_encoding': 'native_gray_8bit_already_lut_aware_do_not_remap',
               'hardware': job.get('hardware'), 'model_path': trainer.current_path, 'feedback': feedback_info}
     (root/'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     emit('result', path=str(root/'result.json'), message='全息相位已导出。' + (('已保存最终实拍验证。' if feedback_info['verification_consistent'] else '最佳复拍存在漂移，请查看回环记录。') if config.live else '尚未进行实物验证。'))

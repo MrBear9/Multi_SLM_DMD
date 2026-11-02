@@ -98,6 +98,10 @@ class HolographyController(QtCore.QObject):
             raise ValueError('请先完成当前训练或自动标定。')
         w, ui = self.window, self.dialog
         config = ui.values().resolve_target_size()
+        if operation == 'lut':
+            config.operation = 'lut'
+            config.geometry_profile = {}
+            config.magnification_source = 'manual'
         if operation == 'geometry':
             config.operation = 'geometry'
             config.geometry_profile = {}
@@ -116,7 +120,7 @@ class HolographyController(QtCore.QObject):
                 if len(size)!=2:
                     raise ValueError('请连接相机并重新读取第三页定位搜索 ROI。')
                 search_rect(config.geometry_search_roi,size[::-1],hardware)
-        if config.operation=='geometry' and config.geometry_method=='checkerboard':
+        if config.operation == 'lut' or (config.operation=='geometry' and config.geometry_method=='checkerboard'):
             config.validate()
         else:
             config.fit_grid().validate()
@@ -150,6 +154,12 @@ class HolographyController(QtCore.QObject):
                 h, width = config.shape(key)
                 if h > display.height or width > display.width:
                     raise ValueError(key+' 有效相位尺寸超过当前面板。')
+            if config.operation == 'lut':
+                from ..holography.spot_detection import search_rect
+                hardware = self.hardware_signature()
+                size = hardware.get('camera',{}).get('geometry',{}).get('raw_size',[])
+                if len(size)!=2:raise ValueError('请等待相机原始帧，并重新读取 LUT 条纹 ROI。')
+                search_rect(config.lut_roi,size[::-1],hardware)
             if config.geometry_profile:
                 from ..holography.geometry import validate_profile
                 validate_profile(config.geometry_profile, config, hardware=self.hardware_signature())
@@ -314,6 +324,8 @@ class HolographyController(QtCore.QObject):
                         self.dialog.model_path.setText(str(model_path))
             elif path.name == 'geometry.json':
                 self.geometry_result = path
+            elif path.name == 'lut.json' and not self.stopping:
+                self.dialog.lut_panel.load_path(path)
             elif path.name == 'model.json' and not self.stopping:
                 info=json.loads(path.read_text(encoding='utf-8'))
                 if info.get('validated'):

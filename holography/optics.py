@@ -53,6 +53,11 @@ class OpticalModel(nn.Module):
         self.source_phase = nn.Parameter(torch.zeros(1, 1, 8, 8))
         self.lut_steps = nn.ParameterDict({k: nn.Parameter(torch.zeros(16)) for k in config.active_slms})
         self.phase_range = nn.ParameterDict({k: nn.Parameter(torch.tensor(0.)) for k in config.active_slms})
+        from .lut import validate_profile
+        for key in config.active_slms:
+            if getattr(config,key+'_lut_source') == 'measured':
+                curve = validate_profile(config.lut_profiles.get(key),config,key)
+                self.register_buffer(key+'_measured_lut',torch.tensor(curve,dtype=torch.float32))
         self.aberrations = nn.ParameterDict({k: nn.Parameter(torch.zeros(5)) for k in config.active_slms})
         # A small, smooth effective target-plane field, not a pixel-wise target
         # image memorizer. Coherent leakage interferes before intensity detection.
@@ -97,6 +102,14 @@ class OpticalModel(nn.Module):
         return gray
 
     def phase(self, gray, key):
+        source = getattr(self.config,key+'_lut_source')
+        if source == 'measured':
+            position = gray.clamp(0,1)*255
+            index = position.long().clamp(max=254)
+            curve = getattr(self,key+'_measured_lut')
+            return curve[index]+(curve[index+1]-curve[index])*(position-index)
+        if source == 'ideal':
+            return (1-gray if self.config.gray_inverted else gray)*2*math.pi
         value = 1-gray if self.config.gray_inverted else gray
         position = value.clamp(0, 1) * 16
         index = position.long().clamp(max=15)

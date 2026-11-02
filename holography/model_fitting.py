@@ -106,7 +106,11 @@ class ModelTrainer:
         if (destination/'model.json').exists(): raise ValueError('模型保存位置已存在，拒绝覆盖。')
         try:
             for p in m.parameters(): p.requires_grad_(True)
-            optimizer=torch.optim.Adam(m.parameters(),lr=c.model_learning_rate)
+            for key in c.active_slms:
+                if getattr(c,key+'_lut_source') != 'model':
+                    m.lut_steps[key].requires_grad_(False)
+                    m.phase_range[key].requires_grad_(False)
+            optimizer=torch.optim.Adam((p for p in m.parameters() if p.requires_grad),lr=c.model_learning_rate)
             for epoch in range(epochs):
                 total=0.
                 for name in self.train:

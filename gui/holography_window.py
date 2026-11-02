@@ -60,6 +60,8 @@ class HolographyWindow(QtWidgets.QDialog):
                             '连接但未参与优化的另一片 SLM 将设为全黑，任务结束恢复。')
         self.descriptionLabel.setText(self.source_note)
         self.descriptionLabel.setWordWrap(True)
+        from .holography_lut import HolographyLutPanel
+        self.lut_panel = HolographyLutPanel(self)
         self.settings = HolographySettings(self)
         self.useGeometrySearchRoiButton.clicked.connect(lambda: self.guarded(self.use_geometry_search_roi))
         self.clearGeometrySearchRoiButton.clicked.connect(self.clear_geometry_search_roi)
@@ -163,6 +165,7 @@ class HolographyWindow(QtWidgets.QDialog):
                 control.setValue(value)
         self.seed = config.seed
         self.settings.set_values(config)
+        self.lut_panel.pending = None
         self.settings.pending = config.geometry_profile or None
         self.settings.changed()
         # Change signals can clear confirmation while restoring other controls.

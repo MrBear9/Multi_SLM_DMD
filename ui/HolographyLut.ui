@@ -1,0 +1,304 @@
+<ui version="4.0">
+ <class>HolographyLut</class>
+ <widget class="QWidget" name="HolographyLut">
+  <layout class="QVBoxLayout" name="lutPageLayout">
+   <item>
+    <widget class="QLabel" name="lutIntroLabel">
+     <property name="text">
+      <string>默认无模型时使用理想 LUT，可直接生成全息。实测 LUT 按 SLM 与波长保存；使用实测曲线时模型不会再次调整该 LUT。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="lutGrid">
+     <item row="0" column="0">
+      <widget class="QLabel" name="slm1_lut_sourceLabel">
+       <property name="text">
+        <string>SLM1 LUT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="slm1_lut_source">
+       <item>
+        <property name="text">
+         <string>自动（无模型时理想）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>固定理想 LUT</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>独立实测 LUT</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="slm2_lut_sourceLabel">
+       <property name="text">
+        <string>SLM2 LUT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QComboBox" name="slm2_lut_source">
+       <item>
+        <property name="text">
+         <string>自动（无模型时理想）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>固定理想 LUT</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>独立实测 LUT</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lut_splitLabel">
+       <property name="text">
+        <string>扫描分区</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="lut_split">
+       <item>
+        <property name="text">
+         <string>左右半区（右侧扫描）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>上下半区（下侧扫描）</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="lut_gray_stepLabel">
+       <property name="text">
+        <string>灰度步长</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QSpinBox" name="lut_gray_step">
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>8</number>
+       </property>
+       <property name="value">
+        <number>4</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lut_carrier_xLabel">
+       <property name="text">
+        <string>条纹 X / 周期每 ROI</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QDoubleSpinBox" name="lut_carrier_x">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-512</double>
+       </property>
+       <property name="maximum">
+        <double>512</double>
+       </property>
+       <property name="value">
+        <double>0</double>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QLabel" name="lut_carrier_yLabel">
+       <property name="text">
+        <string>条纹 Y / 周期每 ROI</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QDoubleSpinBox" name="lut_carrier_y">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-512</double>
+       </property>
+       <property name="maximum">
+        <double>512</double>
+       </property>
+       <property name="value">
+        <double>0</double>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0" colspan="4">
+      <widget class="QCheckBox" name="lut_negative">
+       <property name="text">
+        <string>灰度增大 → 相位递减</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>单个傅里叶侧带无法自行确定绝对相位正负。请按器件与干涉光路核对方向；不受其他页“默认灰度相位反向”重复作用。</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lutMethodLabel">
+     <property name="text">
+      <string>独立测量需要参考光与测试光在 CCD 上叠加成直线干涉条纹；普通 SLM 成像、圆环或全屏亮度不能代替。先导出分区测试图调好光路，在第三页框选至少 3 个周期的条纹，再开始扫描。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lutMethodNote">
+     <property name="text">
+      <string>载频 X/Y 均为 0：从首帧自动选择并锁定；也可手动填写。扫描固定曝光，使用“成像与采集”中的等待/平均帧数；启用分阶段曝光时使用几何标定曝光。正反扫描验证通过后仍需手动应用。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lutRoiLabel">
+     <property name="text">
+      <string>条纹 ROI：未选择</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="lutButtons0">
+     <item>
+      <widget class="QPushButton" name="lutReadRoiButton">
+       <property name="text">
+        <string>读取第三页条纹 ROI</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutClearRoiButton">
+       <property name="text">
+        <string>清除条纹 ROI</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutPatternButton">
+       <property name="text">
+        <string>导出分区测试图…</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutStartButton">
+       <property name="text">
+        <string>开始 LUT 扫描</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="lutButtons1">
+     <item>
+      <widget class="QPushButton" name="lutLoadButton">
+       <property name="text">
+        <string>导入 LUT…</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutApplyButton">
+       <property name="text">
+        <string>应用实测曲线</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutSaveButton">
+       <property name="text">
+        <string>另存 LUT…</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lutConvertButton">
+       <property name="text">
+        <string>转换外部理想相位…</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lutStatusLabel">
+     <property name="text">
+      <string />
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lutCurveLabel">
+     <property name="text">
+      <string />
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>130</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>150</height>
+      </size>
+     </property>
+     <property name="toolTip">
+      <string>实测范围不足 2π 时不强行拉伸。转换后是设备灰度图；本程序导出的相位已按所选 LUT 优化，不要再次转换。</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources />
+ <connections />
+</ui>

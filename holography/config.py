@@ -10,6 +10,15 @@ class HolographyConfig:
     target: str = ''
     target_kind: str = 'file'
     model_path: str = ''
+    slm1_lut_source: str = 'model'
+    slm2_lut_source: str = 'model'
+    lut_profiles: dict = field(default_factory=dict)
+    lut_roi: dict = field(default_factory=dict)
+    lut_gray_step: int = 4
+    lut_split: str = 'vertical'
+    lut_negative: bool = True
+    lut_carrier_x: float = 0.
+    lut_carrier_y: float = 0.
     wavelength_nm: float = 532.
     slm1_width: int = 432
     slm1_height: int = 432
@@ -146,7 +155,7 @@ class HolographyConfig:
 
     @property
     def live(self):
-        return self.operation in ('feedback', 'calibrate', 'geometry')
+        return self.operation in ('feedback', 'calibrate', 'geometry', 'lut')
 
     def reference_size(self):
         if self.reference_source == 'custom':
@@ -172,7 +181,7 @@ class HolographyConfig:
     def exposure_for(self, current):
         if not self.stage_exposure_enabled:
             return current
-        return self.geometry_exposure_us if self.operation == 'geometry' else self.reconstruction_exposure_us
+        return self.geometry_exposure_us if self.operation in ('geometry','lut') else self.reconstruction_exposure_us
 
     def shape(self, key):
         return getattr(self, key + '_height'), getattr(self, key + '_width')
@@ -220,6 +229,10 @@ class HolographyConfig:
         return self
 
     def validate(self):
+        from .lut import validate_settings
+        validate_settings(self)
+        if self.operation == 'lut':
+            return self
         self.resolve_target_size()
         checker=self.operation=='geometry' and self.geometry_method=='checkerboard'
         self.validate_grid_policy()
@@ -339,6 +352,10 @@ class HolographyConfig:
                  'slm1_distance_mm', 'slm2_distance_mm', 'inter_slm_mm', 'output_width', 'output_height',
                  'target_width_um', 'target_height_um')
         result = {key: getattr(self, key) for key in names}
+        from .lut import signature
+        lut_signature = signature(self)
+        if lut_signature:
+            result['lut'] = lut_signature
         for slm in self.active_slms:
             for suffix in ('width', 'height', 'pitch_um'):
                 name = slm + '_' + suffix

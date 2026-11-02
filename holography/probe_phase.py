@@ -27,6 +27,9 @@ def manual_fresnel_phase(config, period_px):
         raise ValueError(f'手动菲涅尔相位超过像素采样带宽；当前有效区域的周期参数需大于 {minimum:.2f} px。')
     y,x=np.ogrid[:h,:w]
     cycles=-((x-(w-1)/2)**2+(y-(h-1)/2)**2)/period_px**2
+    if getattr(config,config.mode+'_lut_source') == 'measured':
+        from .lut import phase_to_gray
+        return phase_to_gray(cycles*2*np.pi,config,config.mode)
     gray=np.remainder(cycles,1)
     if config.gray_inverted:
         gray=1-gray
@@ -73,6 +76,9 @@ def focus_phase(config, point):
             edge=np.clip((config.geometry_probe_radius_um+2*pitch-radius)/(4*pitch),0,1)
             phase=np.pi*edge*edge*(3-2*edge)
         phase+=2*np.pi*(sx*point[0]+sy*point[1])/(wavelength*distance)
+    if getattr(config,key+'_lut_source') == 'measured':
+        from .lut import phase_to_gray
+        return phase_to_gray(phase,config,key)
     gray = np.remainder(phase/(2*np.pi),1)
     if config.gray_inverted:
         gray = 1-gray

@@ -252,6 +252,11 @@ python -m unittest discover -s tools/tests -v
 GUI 测试在 offscreen 模式下运行，覆盖配置、预览、配对、模拟采集、同步开关、不同宽高比的预览、两片 SLM 偏移边界、PNG、AVI、停止、连接失败回滚和线程退出。未安装 GUI 依赖时会跳过 GUI 测试。实际 SDK 调用已接入，但真实设备连接、显示和取帧仍需在实验台验证。
 # 全息子窗口
 
+`HolographyLut.ui` 是子窗口中“LUT 标定”的独立 Designer 页，由 `gui/holography_lut.py`
+接入；可编辑布局而不导入训练运行时。支持理想/自动/实测来源、条纹 ROI、正反灰度扫描、
+曲线导入应用和外部理想相位转换。实测曲线与设置随全息参数保存，未标定仍可使用理想 LUT。
+打包资源已加入 `Qing.spec`；外部训练环境需同步完整 `holography` 目录。
+
 `HolographyWindow.ui` 是可用 Qt Designer 编辑的独立子窗口，主界面两页均有
 「全息生成…」入口。保留控件 objectName 即可修改布局；控制层在
 `gui/holography_window.py`，训练与优化由外部 Python 进程完成。

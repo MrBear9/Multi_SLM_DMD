@@ -60,6 +60,7 @@ a = Analysis(
     datas=[
         (str(tools_dir / 'ui' / 'MainWindow.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'HolographyWindow.ui'), 'tools/ui'),
+        (str(tools_dir / 'ui' / 'HolographyLut.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'GeometryPointSelection.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'HolographyHelp.ui'), 'tools/ui'),
         (str(tools_dir / 'ui' / 'holography_help.html'), 'tools/ui'),

@@ -15,6 +15,9 @@ from ..holography.camera import rectify
 
 
 CONTROLS = {
+    'slm1_lut_source': ('slm1_lut_source', ('model','ideal','measured')),
+    'slm2_lut_source': ('slm2_lut_source', ('model','ideal','measured')),
+    'lut_split': ('lut_split', ('vertical','horizontal')),
     'geometry_method': ('geometry_method', ('probes','checkerboard')),
     'geometry_detector': ('geometry_detector', ('spot','ring')),
     'geometry_probe': ('geometry_probe', ('focus','disk','axicon')),
@@ -40,7 +43,7 @@ CONTROLS = {
     'geometry_pattern': ('geometryPatternComboBox', ('sequential','asymmetric')),
     'geometry_tolerance': ('geometryToleranceSpinBox', None),
 }
-STORED_FIELDS = {'sensor_pitch_y_um', 'geometry_search_roi'}
+STORED_FIELDS = {'sensor_pitch_y_um', 'geometry_search_roi', 'lut_profiles', 'lut_roi'}
 CUSTOM_SIZE = ('reference_physical_width_um', 'reference_physical_height_um')
 
 
@@ -103,7 +106,8 @@ class HolographySettings(QtCore.QObject):
 
     def values(self):
         result = {'geometry_profile':self.profile, 'sensor_pitch_y_um':self.sensor_y_um,
-                  'geometry_search_roi':self.search_roi}
+                  'geometry_search_roi':self.search_roi,
+                  'lut_profiles':copy.deepcopy(self.lut_profiles),'lut_roi':copy.deepcopy(self.lut_roi)}
         for key, (name, choices) in CONTROLS.items():
             control = getattr(self.ui,name)
             result[key] = choices[control.currentIndex()] if choices else control.value()
@@ -114,6 +118,8 @@ class HolographySettings(QtCore.QObject):
         self.loading = True
         try:
             self.profile = dict(config.geometry_profile)
+            self.lut_profiles = copy.deepcopy(config.lut_profiles)
+            self.lut_roi = copy.deepcopy(config.lut_roi)
             self.search_roi = dict(config.geometry_search_roi)
             self.sensor_y_um = config.sensor_pitch_y_um
             # Preserve exact physical values in previously saved configurations.
@@ -196,6 +202,7 @@ class HolographySettings(QtCore.QObject):
         self.preview_timer.start(150)
         self.update_profile_status()
         self.update_camera()
+        self.ui.lut_panel.refresh()
 
     def update_bandwidth(self, config):
         from ..holography.geometry_limits import bandwidth_report
