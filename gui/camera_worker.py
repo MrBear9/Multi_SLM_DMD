@@ -26,6 +26,7 @@ class RealCamera:
         self.settings = settings
         self.api = self.session = None
         self.identity = {}
+        self.auto_exposure = False
 
     def open(self):
         s = self.settings
@@ -49,14 +50,16 @@ class RealCamera:
 
     def parameters(self):
         handle = self.session.handle.value
+        self.auto_exposure = camera.get_ae_operation(self.api, handle) == dvp.AE_OP_CONTINUOUS
         return {'exposure': camera.get_exposure(self.api, handle),
                 'gain': camera.get_gain(self.api, handle),
-                'auto': camera.get_ae_operation(self.api, handle) == dvp.AE_OP_CONTINUOUS,
+                'auto': self.auto_exposure,
                 'camera': dict(self.identity)}
 
     def apply(self, exposure, gain, auto):
         handle = self.session.handle.value
         dvp.check_status(self.api.dll.dvpSetAeOperation(handle, dvp.AE_OP_CONTINUOUS if auto else dvp.AE_OP_OFF), 'set auto exposure')
+        self.auto_exposure = auto
         if not auto:
             dvp.check_status(self.api.dll.dvpSetExposure(handle, exposure), 'set exposure')
             dvp.check_status(self.api.dll.dvpSetAnalogGain(handle, gain), 'set gain')
@@ -67,7 +70,7 @@ class RealCamera:
         frame, raw = self.session.get_frame(min(200, self.settings['ccdTimeoutSpinBox']))
         return camera.frame_to_image(frame, raw), {'frame_id': int(frame.uFrameID),
             'exposure': float(frame.fExposure), 'gain': float(frame.fAGain),
-            'camera': dict(self.identity)}
+            'camera': dict(self.identity), 'auto': self.auto_exposure}
 
     def close(self):
         try:

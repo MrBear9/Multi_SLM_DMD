@@ -224,8 +224,8 @@ class CalibrationController(QtCore.QObject):
                     with Image.open(path) as source:
                         with transform.apply_pil(source) as oriented:
                             width, height = device.display.width, device.display.height
-                            x = (width - oriented.width) // 2 + (values[key + 'OffsetXSpinBox'] if key != 'dmd' else 0)
-                            y = (height - oriented.height) // 2 + (values[key + 'OffsetYSpinBox'] if key != 'dmd' else 0)
+                            x = (width - oriented.width) // 2 + values.get(key + 'OffsetXSpinBox', 0)
+                            y = (height - oriented.height) // 2 + values.get(key + 'OffsetYSpinBox', 0)
                             if x < 0 or y < 0 or x + oriented.width > width or y + oriented.height > height:
                                 raise ValueError(f'{key} 标定图案或搜索偏移超出面板，未发送图案。')
                             canvas = Image.new('L', (width, height), 0)

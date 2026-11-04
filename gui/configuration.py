@@ -55,7 +55,7 @@ def apply_values(window, values):
     values.pop('ccdDetailAutoOpenCheckBox', None)  # Retired automatic page switching.
     if values.get('ccdZoomComboBox') == '1:1 像素':
         values['ccdZoomComboBox'] = '跟随第三页视野'
-    for name, default in {'f4321EnabledCheckBox': False, 'toupcamEnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
+    for name, default in {'dmdOffsetXSpinBox': 0, 'dmdOffsetYSpinBox': 0, 'f4321EnabledCheckBox': False, 'toupcamEnabledCheckBox': False, 'dmdPixelModeComboBox': '保持原图',
                           'dmdThresholdSpinBox': 128, 'dmdDitherCheckBox': False,
                           'dmdInputRangeComboBox': '按位深范围', 'dmdBlackLevelSpinBox': 0.0,
                           'dmdWhiteLevelSpinBox': 65535.0,
@@ -94,7 +94,7 @@ def apply_values(window, values):
     # Apply a complete orientation together; changing one field must not send
     # an intermediate pattern while the rest of the document is being loaded.
     blockers = [QtCore.QSignalBlocker(w) for name, w in controls.items()
-                if name.endswith(transform_suffixes) or name.startswith('f4321')
+                if name.endswith((*transform_suffixes, 'OffsetXSpinBox', 'OffsetYSpinBox')) or name.startswith('f4321')
                 or name.startswith('toupcam') or name == 'ccdEnabledCheckBox'
                 or name in ('slmCaptureSourceComboBox', 'synchronizeDmdCcdCheckBox')
                 or name in ('dmdEnabledCheckBox', 'dmdPixelModeComboBox', 'dmdThresholdSpinBox',

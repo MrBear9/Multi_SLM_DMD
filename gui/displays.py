@@ -21,6 +21,7 @@ class DmdOutput(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_QuitOnClose, False)
         self.setWindowTitle('DMD · 原始像素输出')
         self.setGeometry(*geometry)
+        self.offset = (0, 0)
         self.image = None
         self.set_cursor(show_cursor)
         self.winId()
@@ -38,8 +39,8 @@ class DmdOutput(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.fillRect(self.rect(), QtCore.Qt.black)
         if self.image is not None:
-            painter.drawImage((self.width() - self.image.width()) // 2,
-                              (self.height() - self.image.height()) // 2, self.image)
+            painter.drawImage((self.width() - self.image.width()) // 2 + self.offset[0],
+                              (self.height() - self.image.height()) // 2 + self.offset[1], self.image)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Escape:
@@ -148,6 +149,7 @@ class DisplayAdapter:
                         image = pil_image_qimage(oriented)
                         if image.width() > self.output.width() or image.height() > self.output.height():
                             raise ValueError('DMD 旋转后的输入超过输出尺寸，禁止裁切。')
+                        self.output.offset = (settings.get('dmdOffsetXSpinBox', 0), settings.get('dmdOffsetYSpinBox', 0))
                         self.output.image = image
                         self.output.set_cursor(settings['dmdShowCursorCheckBox'])
                         self.output.repaint()

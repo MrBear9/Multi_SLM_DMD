@@ -63,6 +63,7 @@ class F4321DisplayAdapter:
         if not self.demo and (self.controller is None or not self.controller.connected):
             raise ValueError('F4321 连接未就绪，请断开后重新连接。')
         self.uploaded = False
+        offset = (settings.get('dmdOffsetXSpinBox', 0), settings.get('dmdOffsetYSpinBox', 0))
         source_signature = self._source_signature()
         if self.controller is not None:
             self.controller.stop()
@@ -78,7 +79,7 @@ class F4321DisplayAdapter:
                     if image.width > width or image.height > height:
                         raise ValueError(f'{path.name} 变换后 {image.width}×{image.height} 超过 F4321 实际面板 {width}×{height}。')
                     with Image.new(image.mode, (width, height), 0) as canvas:
-                        canvas.paste(image, ((width-image.width)//2, (height-image.height)//2))
+                        canvas.paste(image, ((width-image.width)//2 + offset[0], (height-image.height)//2 + offset[1]))
                         canvas.save(Path(self.staging.name) / f'{index+1:08d}.bmp', format='BMP')
         if self.controller is not None:
             self.controller.configure(exposure_us=settings['f4321ExposureSpinBox'],
@@ -87,7 +88,7 @@ class F4321DisplayAdapter:
                 len(self.paths), timeout=settings['f4321TimeoutSpinBox'], cancel=cancel)
         if source_signature != self._source_signature():
             raise ValueError('上传期间源图像发生变化，请重新上传。')
-        self.signature = (options, transform, source_signature)
+        self.signature = (options, transform, offset, source_signature)
         self.settings = dict(settings)
         self.uploaded = True
 
@@ -96,7 +97,8 @@ class F4321DisplayAdapter:
 
     def show(self, path, settings):
         signature = (DmdImageOptions.from_settings(settings),
-                     ImageTransform.from_settings(settings, 'dmd'), self._source_signature())
+                     ImageTransform.from_settings(settings, 'dmd'),
+                     (settings.get('dmdOffsetXSpinBox', 0), settings.get('dmdOffsetYSpinBox', 0)), self._source_signature())
         if not self.ready or signature != self.signature:
             raise ValueError('F4321 缓存与当前输入不一致，请暂停并重新上传。')
         index = self.paths.index(path)

@@ -266,16 +266,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>DMD · 显示器输出</string>
                 </property>
-                <layout class="QFormLayout" name="dmdConfigurationForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="dmdConfigurationForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="dmdEnabledCheckBoxLabel">
                    <property name="text">
@@ -286,7 +279,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1">
+                 <item row="0" column="1" colspan="3">
                   <widget class="QCheckBox" name="dmdEnabledCheckBox">
                    <property name="text">
                     <string>启用显示器 DMD</string>
@@ -303,7 +296,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="dmdInputPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -356,7 +349,14 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="2" column="2" colspan="2">
+                  <widget class="QCheckBox" name="dmdShowCursorCheckBox">
+                   <property name="text"><string>显示光标</string></property>
+                   <property name="toolTip"><string>鼠标移到 DMD 全屏输出窗口时显示箭头，便于调试时确认位置。</string></property>
+                   <property name="checked"><bool>false</bool></property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="4">
                   <widget class="QLabel" name="dmdGeometryLabel">
                    <property name="text">
                     <string>面板 1920 × 1080 · 输入有效区通常为 640 × 640</string>
@@ -371,16 +371,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>SLM1 · 中科微兴</string>
                 </property>
-                <layout class="QFormLayout" name="slm1ConfigurationForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="slm1ConfigurationForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="slm1EnabledCheckBoxLabel">
                    <property name="text">
@@ -391,7 +384,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1">
+                 <item row="0" column="1" colspan="3">
                   <widget class="QCheckBox" name="slm1EnabledCheckBox">
                    <property name="text">
                     <string>启用 SLM1</string>
@@ -408,7 +401,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="slm1InputPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -442,7 +435,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="2" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="slm1SdkPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -498,7 +491,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="3" column="2">
                   <widget class="QLabel" name="slm1IntervalSpinBoxLabel">
                    <property name="text">
                     <string>播放间隔</string>
@@ -508,7 +501,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="3" column="3">
                   <widget class="QDoubleSpinBox" name="slm1IntervalSpinBox">
                    <property name="decimals">
                     <number>2</number>
@@ -527,7 +520,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="4" column="0" colspan="4">
                   <widget class="QLabel" name="slm1GeometryLabel">
                    <property name="text">
                     <string>面板 1920 × 1080 · 相位有效区通常为 432 × 432</string>
@@ -542,16 +535,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>SLM2 · MagicHolo HDSLM45R</string>
                 </property>
-                <layout class="QFormLayout" name="slm2ConfigurationForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="slm2ConfigurationForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="slm2EnabledCheckBoxLabel">
                    <property name="text">
@@ -579,7 +565,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="slm2InputPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -613,7 +599,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="2" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="slm2SdkPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -669,7 +655,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="3" column="2">
                   <widget class="QLabel" name="slm2BackgroundSpinBoxLabel">
                    <property name="text">
                     <string>外围灰度</string>
@@ -679,7 +665,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="3" column="3">
                   <widget class="QSpinBox" name="slm2BackgroundSpinBox">
                    <property name="minimum">
                     <number>0</number>
@@ -692,7 +678,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="0">
+                 <item row="0" column="2">
                   <widget class="QLabel" name="slm2IntervalSpinBoxLabel">
                    <property name="text">
                     <string>播放间隔</string>
@@ -702,7 +688,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="0" column="3">
                   <widget class="QDoubleSpinBox" name="slm2IntervalSpinBox">
                    <property name="decimals">
                     <number>2</number>
@@ -724,7 +710,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="1">
+                 <item row="4" column="0" colspan="4">
                   <widget class="QLabel" name="slm2GeometryLabel">
                    <property name="text">
                     <string>面板 1920 × 1080 · 相位有效区通常为 768 × 768</string>
@@ -739,16 +725,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>相机 · 度申 M3ST130-H-02C</string>
                 </property>
-                <layout class="QFormLayout" name="ccdConfigurationForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="ccdConfigurationForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="ccdEnabledCheckBoxLabel">
                    <property name="text">
@@ -776,7 +755,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="ccdDllPathEditLayout">
                    <property name="spacing">
                     <number>10</number>
@@ -826,7 +805,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="0">
+                 <item row="2" column="2">
                   <widget class="QLabel" name="ccdFormatComboBoxLabel">
                    <property name="text">
                     <string>输出格式</string>
@@ -836,7 +815,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="2" column="3">
                   <widget class="QComboBox" name="ccdFormatComboBox">
                    <property name="toolTip">
                     <string>bgr8：彩色，每通道 8 位（BGR24）；mono8：8 位灰度。native：沿用相机当前输出格式，不会自动切换到最高位深。</string>
@@ -858,7 +837,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="ccdTimeoutSpinBoxLabel">
                    <property name="text">
                     <string>取帧超时</string>
@@ -868,7 +847,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="3" column="1">
                   <widget class="QSpinBox" name="ccdTimeoutSpinBox">
                    <property name="minimum">
                     <number>1</number>
@@ -884,7 +863,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="0">
+                 <item row="3" column="2">
                   <widget class="QLabel" name="ccdPreviewIntervalSpinBoxLabel">
                    <property name="text">
                     <string>预览刷新间隔</string>
@@ -894,7 +873,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="3" column="3">
                   <widget class="QSpinBox" name="ccdPreviewIntervalSpinBox">
                    <property name="toolTip">
                     <string>界面读取最新相机图像的间隔。33 ms 约为 30 次/秒，10 ms 约为 100 次/秒；实际预览 FPS 受供帧和绘图速度影响。此项不设置相机采集帧率或录像帧率。</string>
@@ -916,7 +895,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0">
+                 <item row="0" column="2">
                   <widget class="QLabel" name="ccdRoiCheckBoxLabel">
                    <property name="text">
                     <string>传感器区域</string>
@@ -926,7 +905,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="1">
+                 <item row="0" column="3">
                   <widget class="QCheckBox" name="ccdRoiCheckBox">
                    <property name="toolTip">
                     <string>未启用时不裁切传感器区域；640 × 640 仅为 ROI 初值。实际采集尺寸以相机返回帧为准。</string>
@@ -939,7 +918,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="0" colspan="2">
+                 <item row="4" column="0" colspan="4">
                   <widget class="QWidget" name="ccdRoiWidget">
                    <property name="enabled">
                     <bool>false</bool>
@@ -1031,7 +1010,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </layout>
                   </widget>
                  </item>
-                 <item row="8" column="0" colspan="2">
+                 <item row="5" column="0" colspan="4">
                   <widget class="QLabel" name="ccdModelInfoLabel">
                    <property name="text">
                     <string>彩色 CMOS · 全局快门 · USB3.0
@@ -1053,16 +1032,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>DMD · F4321 高速控制器</string>
                 </property>
-                <layout class="QFormLayout" name="f4321ConfigurationForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="f4321ConfigurationForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="f4321EnabledCheckBoxLabel">
                    <property name="text">
@@ -1093,7 +1065,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="f4321InputPathEditLayout">
                    <property name="spacing">
                     <number>8</number>
@@ -1124,7 +1096,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="2" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="f4321DllPathEditLayout">
                    <property name="spacing">
                     <number>8</number>
@@ -1145,7 +1117,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </layout>
                  </item>
-                 <item row="3" column="0">
+                 <item row="0" column="2">
                   <widget class="QLabel" name="f4321DeviceIdSpinBoxLabel">
                    <property name="text">
                     <string>设备 ID</string>
@@ -1155,7 +1127,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="0" column="3">
                   <widget class="QSpinBox" name="f4321DeviceIdSpinBox">
                    <property name="minimum">
                     <number>1</number>
@@ -1168,14 +1140,14 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="f4321LocalEndpointLayoutLabel">
                    <property name="text">
                     <string>本机 IP / 端口</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="3" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="f4321LocalEndpointLayout">
                    <property name="spacing">
                     <number>8</number>
@@ -1202,14 +1174,14 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </layout>
                  </item>
-                 <item row="5" column="0">
+                 <item row="4" column="0">
                   <widget class="QLabel" name="f4321TargetEndpointLayoutLabel">
                    <property name="text">
                     <string>设备 IP / 端口</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="4" column="1" colspan="3">
                   <layout class="QHBoxLayout" name="f4321TargetEndpointLayout">
                    <property name="spacing">
                     <number>8</number>
@@ -1236,7 +1208,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </layout>
                  </item>
-                 <item row="6" column="0">
+                 <item row="5" column="0">
                   <widget class="QLabel" name="f4321ExposureSpinBoxLabel">
                    <property name="text">
                     <string>曝光时间</string>
@@ -1246,7 +1218,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="1">
+                 <item row="5" column="1">
                   <widget class="QDoubleSpinBox" name="f4321ExposureSpinBox">
                    <property name="decimals">
                     <number>3</number>
@@ -1268,7 +1240,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="0">
+                 <item row="5" column="2">
                   <widget class="QLabel" name="f4321DarkTimeSpinBoxLabel">
                    <property name="text">
                     <string>暗场时间</string>
@@ -1278,7 +1250,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="1">
+                 <item row="5" column="3">
                   <widget class="QDoubleSpinBox" name="f4321DarkTimeSpinBox">
                    <property name="decimals">
                     <number>3</number>
@@ -1300,7 +1272,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="8" column="0">
+                 <item row="6" column="0">
                   <widget class="QLabel" name="f4321TimeoutSpinBoxLabel">
                    <property name="text">
                     <string>传输超时</string>
@@ -1310,7 +1282,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="8" column="1">
+                 <item row="6" column="1">
                   <widget class="QDoubleSpinBox" name="f4321TimeoutSpinBox">
                    <property name="decimals">
                     <number>1</number>
@@ -1329,7 +1301,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="9" column="1">
+                 <item row="7" column="0" colspan="4">
                   <widget class="QLabel" name="f4321ConfigurationHintLabel">
                    <property name="text">
                     <string>本机 IP 填连接 DMD 的网卡地址。两种 DMD 每次启用一种；转换与循环选项在右侧，连接后共用第二页 DMD 预览。</string>
@@ -1350,16 +1322,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                 <property name="title">
                  <string>DMD · 图像转换与播放（两种设备共用）</string>
                 </property>
-                <layout class="QFormLayout" name="dmdConversionForm">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                 </property>
-                 <property name="labelAlignment">
-                  <set>Qt::AlignRight|Qt::AlignVCenter</set>
-                 </property>
+                <layout class="QGridLayout" name="dmdConversionForm" columnstretch="0,1,0,1" rowstretch="0,0,0,0,0,1">
+                 <property name="horizontalSpacing"><number>8</number></property>
+                 <property name="verticalSpacing"><number>6</number></property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="dmdPixelModeComboBoxLabel">
                    <property name="text">
@@ -1389,7 +1354,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </widget>
                  </item>
-                 <item row="1" column="0">
+                 <item row="0" column="2">
                   <widget class="QLabel" name="dmdThresholdSpinBoxLabel">
                    <property name="text">
                     <string>二值阈值</string>
@@ -1399,7 +1364,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="0" column="3">
                   <widget class="QSpinBox" name="dmdThresholdSpinBox">
                    <property name="minimum">
                     <number>0</number>
@@ -1415,7 +1380,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="0">
+                 <item row="1" column="2">
                   <widget class="QLabel" name="dmdDitherCheckBoxLabel">
                    <property name="text">
                     <string>二值化方式</string>
@@ -1425,7 +1390,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="1" column="3">
                   <widget class="QCheckBox" name="dmdDitherCheckBox">
                    <property name="text">
                     <string>Floyd–Steinberg 抖动</string>
@@ -1435,7 +1400,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="0">
+                 <item row="1" column="0">
                   <widget class="QLabel" name="dmdInputRangeComboBoxLabel">
                    <property name="text">
                     <string>高位深映射</string>
@@ -1445,7 +1410,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="1" column="1">
                   <widget class="QComboBox" name="dmdInputRangeComboBox">
                    <item>
                     <property name="text">
@@ -1459,7 +1424,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </item>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="2" column="0">
                   <widget class="QLabel" name="dmdBlackLevelSpinBoxLabel">
                    <property name="text">
                     <string>黑电平</string>
@@ -1469,7 +1434,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="2" column="1">
                   <widget class="QDoubleSpinBox" name="dmdBlackLevelSpinBox">
                    <property name="decimals">
                     <number>3</number>
@@ -1485,7 +1450,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="0">
+                 <item row="2" column="2">
                   <widget class="QLabel" name="dmdWhiteLevelSpinBoxLabel">
                    <property name="text">
                     <string>白电平</string>
@@ -1495,7 +1460,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="2" column="3">
                   <widget class="QDoubleSpinBox" name="dmdWhiteLevelSpinBox">
                    <property name="decimals">
                     <number>3</number>
@@ -1511,7 +1476,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="dmdSettleSpinBoxLabel">
                    <property name="text">
                     <string>采集前稳定时间</string>
@@ -1521,7 +1486,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="1">
+                 <item row="3" column="1">
                   <widget class="QDoubleSpinBox" name="dmdSettleSpinBox">
                    <property name="decimals">
                     <number>2</number>
@@ -1540,7 +1505,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="0">
+                 <item row="3" column="2">
                   <widget class="QLabel" name="dmdLoopCheckBoxLabel">
                    <property name="text">
                     <string>播放选项</string>
@@ -1550,7 +1515,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="1">
+                 <item row="3" column="3">
                   <widget class="QCheckBox" name="dmdLoopCheckBox">
                    <property name="text">
                     <string>循环播放</string>
@@ -1560,7 +1525,7 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                    </property>
                   </widget>
                  </item>
-                 <item row="8" column="1">
+                 <item row="4" column="0" colspan="4">
                   <widget class="QLabel" name="dmdConversionHintLabel">
                    <property name="text">
                     <string>保留原始文件，仅转换发送副本；不缩放图像。先转换，再旋转或翻转。F4321 请选择 1 位或 8 位，播放间隔在第二页设置。</string>
@@ -1597,6 +1562,47 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                     <string>color: #805a19; background: #fff6e5; border-radius: 5px; padding: 8px; font-weight: normal;</string>
                    </property>
                   </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="toupcamDllRow" stretch="0,1">
+                  <item>
+                   <widget class="QLabel" name="toupcamDllPathLayoutLabel">
+                    <property name="text">
+                     <string>SDK DLL</string>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="toupcamDllPathLayout">
+                    <property name="spacing">
+                     <number>8</number>
+                    </property>
+                    <item>
+                     <widget class="QLineEdit" name="toupcamDllPathEdit">
+                      <property name="text">
+                       <string>tools/3rdparty/toupcamsdk/win/x64/toupcam.dll</string>
+                      </property>
+                      <property name="toolTip">
+                       <string>64 位 Python 使用 x64 DLL；32 位环境需改为 x86。连接前可更改 DLL 路径。</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="toupcamDllPathEditBrowseButton">
+                      <property name="text">
+                       <string>浏览…</string>
+                      </property>
+                      <property name="enabled">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  </layout>
                  </item>
                  <item>
                   <layout class="QHBoxLayout" name="toupcamColumnsLayout" stretch="1,1">
@@ -1661,43 +1667,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                            <bool>true</bool>
                           </property>
                          </widget>
-                        </item>
-                        <item row="1" column="0">
-                         <widget class="QLabel" name="toupcamDllPathLayoutLabel">
-                          <property name="text">
-                           <string>SDK DLL</string>
-                          </property>
-                          <property name="wordWrap">
-                           <bool>true</bool>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="1" column="1">
-                         <layout class="QHBoxLayout" name="toupcamDllPathLayout">
-                          <property name="spacing">
-                           <number>8</number>
-                          </property>
-                          <item>
-                           <widget class="QLineEdit" name="toupcamDllPathEdit">
-                            <property name="text">
-                             <string>tools/3rdparty/toupcamsdk/win/x64/toupcam.dll</string>
-                            </property>
-                            <property name="toolTip">
-                             <string>64 位 Python 使用 x64 DLL；32 位环境需改为 x86。连接前可更改 DLL 路径。</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QPushButton" name="toupcamDllPathEditBrowseButton">
-                            <property name="text">
-                             <string>浏览…</string>
-                            </property>
-                            <property name="enabled">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
                         </item>
                         <item row="2" column="0">
                          <widget class="QLabel" name="toupcamDeviceLayoutLabel">
@@ -2839,13 +2808,13 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                   <widget class="QWidget" name="dmdControlsWidget">
                    <property name="minimumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>16777215</height>
                     </size>
                    </property>
@@ -2981,6 +2950,71 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                         </property>
                         <property name="checked">
                          <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QHBoxLayout" name="dmdOffsetLayout" stretch="0,1,0,1">
+                      <property name="spacing">
+                       <number>3</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="dmdOffsetXLabel">
+                        <property name="text">
+                         <string>X</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="dmdOffsetXSpinBox">
+                        <property name="minimum">
+                         <number>-1920</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1920</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="dmdOffsetYLabel">
+                        <property name="text">
+                         <string>Y</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="dmdOffsetYSpinBox">
+                        <property name="minimum">
+                         <number>-1080</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1080</number>
+                        </property>
+                        <property name="value">
+                         <number>0</number>
+                        </property>
+                        <property name="suffix">
+                         <string> px</string>
                         </property>
                        </widget>
                       </item>
@@ -3182,16 +3216,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                        </widget>
                       </item>
                      </layout>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="dmdShowCursorCheckBox">
-                      <property name="text">
-                       <string>显示光标</string>
-                      </property>
-                      <property name="checked">
-                       <bool>false</bool>
-                      </property>
-                     </widget>
                     </item>
                     <item>
                      <widget class="QPushButton" name="dmdUploadButton">
@@ -3449,13 +3473,13 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                   <widget class="QWidget" name="slm1ControlsWidget">
                    <property name="minimumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>16777215</height>
                     </size>
                    </property>
@@ -3749,9 +3773,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                      </layout>
                     </item>
                     <item>
-                     <layout class="QHBoxLayout" name="slm1OffsetXLayout">
+                     <layout class="QHBoxLayout" name="slm1OffsetLayout" stretch="0,1,0,1">
                       <property name="spacing">
-                       <number>6</number>
+                       <number>3</number>
                       </property>
                       <property name="leftMargin">
                        <number>0</number>
@@ -3788,25 +3812,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                         </property>
                        </widget>
                       </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="slm1OffsetYLayout">
-                      <property name="spacing">
-                       <number>6</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
                       <item>
                        <widget class="QLabel" name="slm1OffsetYLabel">
                         <property name="text">
@@ -3827,31 +3832,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                         </property>
                         <property name="suffix">
                          <string> px</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QPushButton" name="slm1ApplyOffsetButton">
-                        <property name="enabled">
-                         <bool>false</bool>
-                        </property>
-                        <property name="text">
-                         <string>应用</string>
-                        </property>
-                        <property name="minimumSize">
-                         <size>
-                          <width>48</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="maximumSize">
-                         <size>
-                          <width>48</width>
-                          <height>16777215</height>
-                         </size>
-                        </property>
-                        <property name="toolTip">
-                         <string>应用有效区相对面板中心的偏移。切换“完整面板”可查看位置；有效区域模式只放大图案本身。</string>
                         </property>
                        </widget>
                       </item>
@@ -4090,13 +4070,13 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                   <widget class="QWidget" name="slm2ControlsWidget">
                    <property name="minimumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>176</width>
+                     <width>196</width>
                      <height>16777215</height>
                     </size>
                    </property>
@@ -4390,9 +4370,9 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                      </layout>
                     </item>
                     <item>
-                     <layout class="QHBoxLayout" name="slm2OffsetXLayout">
+                     <layout class="QHBoxLayout" name="slm2OffsetLayout" stretch="0,1,0,1">
                       <property name="spacing">
-                       <number>6</number>
+                       <number>3</number>
                       </property>
                       <property name="leftMargin">
                        <number>0</number>
@@ -4429,25 +4409,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                         </property>
                        </widget>
                       </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QHBoxLayout" name="slm2OffsetYLayout">
-                      <property name="spacing">
-                       <number>6</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
                       <item>
                        <widget class="QLabel" name="slm2OffsetYLabel">
                         <property name="text">
@@ -4468,31 +4429,6 @@ QPushButton#ccdDetailRoiApplyButton { background: #286bdb; color: white; border-
                         </property>
                         <property name="suffix">
                          <string> px</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QPushButton" name="slm2ApplyOffsetButton">
-                        <property name="enabled">
-                         <bool>false</bool>
-                        </property>
-                        <property name="text">
-                         <string>应用</string>
-                        </property>
-                        <property name="minimumSize">
-                         <size>
-                          <width>48</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="maximumSize">
-                         <size>
-                          <width>48</width>
-                          <height>16777215</height>
-                         </size>
-                        </property>
-                        <property name="toolTip">
-                         <string>应用有效区相对面板中心的偏移。切换“完整面板”可查看位置；有效区域模式只放大图案本身。</string>
                         </property>
                        </widget>
                       </item>

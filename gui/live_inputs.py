@@ -201,7 +201,7 @@ class LiveInputs:
             menu.addSeparator()
             for name in HOLOGRAPHY_PATTERNS:
                 action=menu.addAction(name)
-                action.setToolTip('读取全息标定当前参数，生成目标中心的探测相位；按有效尺寸居中显示。')
+                action.setToolTip('读取全息标定当前参数，生成目标中心的探测相位；按有效尺寸及当前偏移显示。')
                 actions[action]=name
             manual=menu.addAction(MANUAL_FRESNEL+'…')
             actions[menu.addAction(CALIBRATION_CHECKERBOARD)]=CALIBRATION_CHECKERBOARD
@@ -277,7 +277,7 @@ class LiveInputs:
                         draw.rectangle((x, y, x + 63, y + 63), fill=255)
         image.save(path)
         image.close()
-        values = self.test_values(key, read_values(w))
+        values = self.test_values(key, read_values(w), name)
         prepared = w.prepare_frame(key, 0, values, path=path)
         w.devices[key].show(path, values, calibration=True)
         w.publish_frame(key, prepared)
@@ -287,9 +287,10 @@ class LiveInputs:
         w.update_actions()
 
     @staticmethod
-    def test_values(key, values):
+    def test_values(key, values, name):
         values = dict(values)
-        values.update({key + 'RotationSpinBox': 0.0, key + 'HorizontalFlipCheckBox': False,
+        if name == '全黑':
+            values.update({key + 'RotationSpinBox': 0.0, key + 'HorizontalFlipCheckBox': False,
                        key + 'VerticalFlipCheckBox': False, key + 'OffsetXSpinBox': 0,
                        key + 'OffsetYSpinBox': 0, 'slm2BackgroundSpinBox': 0})
         if key == 'dmd':
@@ -308,7 +309,7 @@ class LiveInputs:
             # Restore the exact displayed pattern, even if holography parameters
             # have since changed. Regeneration is an explicit menu action.
             name,path=self.tests[key]
-            values=self.test_values(key,values)
+            values=self.test_values(key,values,name)
             prepared=w.prepare_frame(key,0,values,path=path)
             w.devices[key].show(path,values,calibration=True)
             w.publish_frame(key,prepared)

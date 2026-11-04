@@ -119,15 +119,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.calibrationSetupButton.clicked.connect(self.calibration.open)
         self.holographySetupButton.clicked.connect(self.holography.open)
         self.holographyPreviewButton.clicked.connect(self.holography.open)
-        for key in ('slm1', 'slm2'):
-            getattr(self, key + 'ApplyOffsetButton').clicked.connect(partial(self.guard, partial(self.apply_offset, key)))
-            fill = '灰度 0' if key == 'slm1' else '配置的外围灰度'
-            note = f'相对面板中心按原生像素平移；越界部分裁掉，空出区域填充{fill}。不循环、不缩放。切换“完整面板”查看实际输出；“有效区域”仍显示输入图案。'
-            for suffix in ('OffsetXSpinBox','OffsetYSpinBox','ApplyOffsetButton'):
-                getattr(self,key+suffix).setToolTip(note)
+        self.offset_timers = {}
+        for key in DISPLAY_KEYS:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(100)
+            timer.timeout.connect(partial(self.guard, partial(self.apply_offset, key)))
+            self.offset_timers[key] = timer
+            for axis in ('X', 'Y'):
+                spin = getattr(self, key + 'Offset' + axis + 'SpinBox')
+                spin.setKeyboardTracking(False)
+                spin.valueChanged.connect(lambda _, timer=timer: timer.start())
+                spin.setToolTip('按原生像素平移，自动应用。越界部分裁掉；选择“完整面板”查看实际位置。')
         self.synchronizeDmdCcdCheckBox.toggled.connect(self.capture_sync_changed)
         self.slmCaptureSourceComboBox.currentIndexChanged.connect(self.slm_capture_sync_changed)
         self.ccdApplyParametersButton.clicked.connect(partial(self.guard, self.apply_camera_parameters))
+        self.ccdAutoExposureCheckBox.clicked.connect(self.auto_exposure_clicked)
         self.ccdCaptureButton.clicked.connect(partial(self.guard, self.capture_manual))
         self.ccdRecordButton.clicked.connect(partial(self.guard, self.toggle_recording))
         self.outputDirectoryEdit.textChanged.connect(lambda text: self.capturePathLabel.setText('保存目录：' + text))
@@ -691,8 +698,8 @@ class MainWindow(QtWidgets.QMainWindow):
         unknown_panel = key == 'dmd' and values.get('f4321EnabledCheckBox') and key not in self.devices
         if unknown_panel:
             display = zkwx.Monitor(0, 0, 0, max(1920, source.width()), max(1080, source.height()), False)
-        offset_x = values[key + 'OffsetXSpinBox'] if key != 'dmd' else 0
-        offset_y = values[key + 'OffsetYSpinBox'] if key != 'dmd' else 0
+        offset_x = values.get(key + 'OffsetXSpinBox', 0)
+        offset_y = values.get(key + 'OffsetYSpinBox', 0)
         source_size = (source.width(), source.height())
         if key == 'slm1':
             origin = image_files.canvas_origin(source_size, display, offset_x, offset_y)
@@ -701,7 +708,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             if source.width() > display.width or source.height() > display.height:
                 raise ValueError('DMD 输入超过面板尺寸，不能原尺寸显示。')
-            origin = ((display.width - source.width()) // 2, (display.height - source.height()) // 2)
+            origin = ((display.width - source.width()) // 2 + offset_x, (display.height - source.height()) // 2 + offset_y)
         canvas = QtGui.QImage(display.width, display.height, QtGui.QImage.Format_ARGB32)
         canvas.fill(QtGui.QColor(background, background, background))
         painter = QtGui.QPainter(canvas)
@@ -866,13 +873,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_actions()
 
     def apply_offset(self, key='slm2'):
-        if self.slm_capture_running():
-            raise ValueError('请先暂停 SLM 同步采集，再修改偏移。')
-        if self.paths[key]:
-            # Validate the target canvas before sending either paired SLM frame.
+        if not self.transform_editable(key):
+            return
+        values = read_values(self)
+        if key == 'dmd' and self.network_dmd() is not None:
+            self.reupload_dmd()
+            return
+        if key in self.devices:
+            self.inputs.restore_display(key, values)
+        elif self.paths[key]:
             self.render_frame(key, self.indices[key])
-            self.show_frame(key, self.indices[key])
-            self.statusBar().showMessage(f'{key.upper()} 偏移已应用；切换“完整面板”可查看图案位置。')
+        if self.settings is not None:
+            for axis in ('X', 'Y'):
+                field = key + 'Offset' + axis + 'SpinBox'
+                self.settings[field] = values[field]
 
     def reupload_dmd(self):
         network = self.network_dmd()
@@ -891,7 +905,7 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 network.show(self.paths['dmd'][index], values)
                 self.render_frame('dmd', index)
-                for suffix in TRANSFORM_SUFFIXES:
+                for suffix in (*TRANSFORM_SUFFIXES, 'OffsetXSpinBox', 'OffsetYSpinBox'):
                     self.settings['dmd' + suffix] = values['dmd' + suffix]
                 self.dmdStateLabel.setText('● 演示设备' if self.demo else '● 已连接')
                 self.dmdDeviceInfoLabel.setText(f'缓存就绪 · {len(self.paths["dmd"])} 张')
@@ -921,8 +935,6 @@ class MainWindow(QtWidgets.QMainWindow):
                            for key in (*DISPLAY_KEYS, 'ccd')}
 
     def transform_editable(self, key):
-        if key in self.inputs.tests:
-            return False
         if self.automation_active or self.disconnecting or self.device_task is not None:
             return False
         synchronized_capture = self.synchronizeDmdCcdCheckBox.isChecked() and self.timers['dmd'].isActive()
@@ -949,6 +961,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if key == 'ccd':
                 if self.camera is not None:
                     self.camera.submit('transform', transform)
+            elif key in self.inputs.tests:
+                self.inputs.restore_display(key, values)
             elif self.paths[key]:
                 # Check every frame before applying an orientation to a sequence.
                 display = self.devices[key].display if key in self.devices else zkwx.Monitor(0, 0, 0, 1920, 1080, False)
@@ -1049,6 +1063,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera.submit('parameters', self.ccdExposureSpinBox.value(), self.ccdGainSpinBox.value(),
                            self.ccdAutoExposureCheckBox.isChecked())
 
+    def auto_exposure_clicked(self, checked):
+        if not checked:
+            # Copy both values before the user starts editing the manual pair.
+            self.sync_auto_exposure_fields(include_focused=True)
+
+    def sync_auto_exposure_fields(self, include_focused=False):
+        if self.camera_preview_packet is None or not self.camera_parameters.get('auto'):
+            return
+        metadata = self.camera_preview_packet[1]
+        if not metadata.get('auto'):
+            return
+        for field, key in ((self.ccdExposureSpinBox, 'exposure'), (self.ccdGainSpinBox, 'gain')):
+            value = metadata[key]
+            if field.minimum() <= value <= field.maximum() and (include_focused or not field.hasFocus()):
+                with QtCore.QSignalBlocker(field):
+                    field.setValue(value)
+
     def queue_capture(self, filename, automatic=False, source='dmd', *, destination=None, overwrite=None):
         if not self.camera_ready:
             raise ValueError('CCD 尚未就绪。')
@@ -1136,13 +1167,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ccdActiveAreaLabel.setText(f'预览 {fps:.1f} FPS')
         self.ccd_detail.update_status()
         self.toupcam.update_fps()
-        if self.camera_preview_packet is not None:
-            metadata = self.camera_preview_packet[1]
-            if metadata.get('auto'):
-                for field, key in [(self.ccdExposureSpinBox, 'exposure'), (self.ccdGainSpinBox, 'gain')]:
-                    if not field.hasFocus():
-                        with QtCore.QSignalBlocker(field):
-                            field.setValue(metadata[key])
+        if self.ccdAutoExposureCheckBox.isChecked():
+            self.sync_auto_exposure_fields()
         self.preview_fps_started_at = now
         self.preview_fps_frames = 0
 
@@ -1251,8 +1277,9 @@ class MainWindow(QtWidgets.QMainWindow):
             for suffix in ('PlayButton', 'PreviousButton', 'NextButton', 'FrameSpinBox'):
                 getattr(self, key + suffix).setEnabled(usable)
             getattr(self, key + 'PauseButton').setEnabled((running or (key == 'dmd' and network is not None and network_ready)) and usable)
-        for key in ('slm1', 'slm2'):
-            getattr(self, key + 'ApplyOffsetButton').setEnabled(bool(self.paths[key]) and key not in self.inputs.tests and not slm_running and not self.disconnecting and not transferring)
+        for key in DISPLAY_KEYS:
+            for axis in ('X','Y'):
+                getattr(self, key + 'Offset' + axis + 'SpinBox').setEnabled(self.transform_editable(key))
         self.ccdApplyParametersButton.setEnabled(self.camera_ready and not slm_running and not self.disconnecting and not transferring)
         self.ccdCaptureButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.disconnecting and not transferring)
         self.ccdRecordButton.setEnabled(self.camera_ready and self.received_frames > 0 and not self.recording_pending and not self.disconnecting and not transferring)
