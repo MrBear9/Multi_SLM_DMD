@@ -37,6 +37,7 @@ from ..utils.camera_settings import selected_camera, camera_value
 
 DISPLAY_KEYS = ('dmd', 'slm1', 'slm2')
 TRANSFORM_SUFFIXES = ('RotationSpinBox', 'HorizontalFlipCheckBox', 'VerticalFlipCheckBox')
+CAMERA_CONTROLS = ('exposure', 'gain', 'auto')
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -69,6 +70,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slm_capture_request = None
         self.camera_parameters = {}
         self.camera_preview_packet = None
+        self.remembered_cameras = {}
+        self.disconnected_camera_fields = {}
         self.calibration = CalibrationController(self)
         self.holography = HolographyController(self)
         self.transforms = {key: ImageTransform() for key in (*DISPLAY_KEYS, 'ccd')}
@@ -306,6 +309,8 @@ class MainWindow(QtWidgets.QMainWindow):
             raise ValueError('请先断开设备，再载入配置。')
         self.stop_all()
         apply_values(self, read_configuration(path))
+        # An explicitly loaded configuration takes precedence over cached values.
+        self.disconnected_camera_fields.clear()
         self.toupcam.update_interval()
         self.toupcamRoiWidget.setEnabled(self.toupcamRoiCheckBox.isChecked())
         self.sync_transform_values()
@@ -541,6 +546,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 getattr(self, key + 'StateLabel').setToolTip(
                     f'实际选择：{identifier}\n{display.width}×{display.height} @ ({display.left}, {display.top})')
             if key == 'dmd' and settings['f4321EnabledCheckBox']:
+                index = self.inputs.reconnect_index(key, self.paths[key], settings['f4321InputPathEdit'])
+                if index is not None:
+                    device.show(self.paths[key][index], settings)
+                    self.indices[key] = index
+                    with QtCore.QSignalBlocker(self.dmdFrameSpinBox):
+                        self.dmdFrameSpinBox.setValue(index + 1)
                 self.render_frame(key, self.indices[key])
         try:
             self.inputs.initialize()
@@ -592,10 +603,43 @@ class MainWindow(QtWidgets.QMainWindow):
                 f'设备名称：{identity.get("friendly_name") or "未命名"}')
         else:
             self.ccdTitleLabel.setToolTip('演示模式：使用合成图像，未连接真实相机。')
+        fields = self.camera_field_values()
         self.on_camera_parameters(parameters)
+        remembered = self.remembered_cameras.get(self.camera_memory_key())
+        if remembered and self.camera is not None:
+            desired = {key: remembered[key] if self.disconnected_camera_fields.get(key) == fields[key]
+                       else fields[key] for key in CAMERA_CONTROLS}
+            if any(desired[key] != parameters[key] for key in CAMERA_CONTROLS):
+                self.camera.submit('parameters', desired['exposure'], desired['gain'], desired['auto'])
         self.ccdStateLabel.setText('● 演示图像源' if self.demo else '● 已连接')
         self.update_actions()
         self.calibration.camera_ready()
+
+    def camera_field_values(self):
+        return dict(exposure=self.ccdExposureSpinBox.value(), gain=self.ccdGainSpinBox.value(),
+                    auto=self.ccdAutoExposureCheckBox.isChecked())
+
+    def camera_memory_key(self):
+        backend = selected_camera(self.settings or {})
+        identity = self.camera_parameters.get('camera', {})
+        identifier = identity.get('serial') or identity.get('id')
+        if self.demo:
+            return ('demo', backend)
+        return (backend, identifier) if identifier and backend else None
+
+    def remember_camera(self):
+        key = self.camera_memory_key()
+        if key is None or not self.camera_ready:
+            return
+        values = {name: self.camera_parameters[name] for name in CAMERA_CONTROLS}
+        if values['auto'] and self.camera_preview_packet is not None:
+            frame = self.camera_preview_packet[1]
+            if frame.get('auto'):
+                values.update(exposure=frame['exposure'], gain=frame['gain'])
+        self.remembered_cameras[key] = values
+        self.ccdExposureSpinBox.setValue(values['exposure'])
+        self.ccdGainSpinBox.setValue(values['gain'])
+        self.ccdAutoExposureCheckBox.setChecked(values['auto'])
 
     def on_camera_parameters(self, parameters):
         self.camera_parameters.update(parameters)
@@ -632,6 +676,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if self.disconnecting:
             return
+        self.remember_camera()
+        for key in self.devices:
+            self.inputs.remember_frame(key)
         self.disconnecting = True
         self.stop_all()
         devices, self.devices = self.devices, {}
@@ -668,6 +715,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_preview_packet = None
         for control, limits in zip((self.ccdExposureSpinBox, self.ccdGainSpinBox), self.ccd_default_ranges):
             control.setRange(*limits)
+        self.disconnected_camera_fields = self.camera_field_values()
         self.reset_preview_fps()
         self.ccdTitleLabel.setText(self.ccd_default_title)
         self.ccdTitleLabel.setToolTip(self.ccd_default_tooltip)
@@ -754,6 +802,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 getattr(self, target + 'FrameSpinBox').setValue(index + 1)
             self.publish_frame(target, prepared[target])
             self.inputs.tests.pop(target, None)
+            if target not in self.devices and self.inputs.remembered_frames:
+                self.inputs.remember_frame(target)
         if key == 'dmd' and capture and self.synchronizeDmdCcdCheckBox.isChecked():
             self.queue_capture(self.paths[key][index].stem + '.png', automatic=True)
         elif slm_capture:

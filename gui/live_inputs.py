@@ -20,6 +20,9 @@ class LiveInputs:
         self.window = window
         self.directory = None
         self.tests = {}
+        self.remembered_frames = {}
+        self.remembered_tests = {}
+        self.initial_black = set()
         self.manual_periods = {}
         for key in ('dmd', 'slm1', 'slm2'):
             getattr(window, key + 'ImportImagesButton').clicked.connect(partial(self.choose_inputs, key))
@@ -114,7 +117,27 @@ class LiveInputs:
             w.update_actions()
             return False
 
-    def import_inputs(self, selections):
+    def remember_frame(self, key):
+        w = self.window
+        paths, index = w.paths[key], w.indices[key]
+        field = self.field(key)
+        source = getattr(w, field).text().strip()
+        self.remembered_tests.pop(field, None)
+        if key in self.tests and key not in self.initial_black:
+            self.remembered_tests[field] = (input_path(source) if source else None, self.tests[key])
+        if source and 0 <= index < len(paths):
+            self.remembered_frames[field] = (input_path(source), paths[index].name, index)
+
+    def reconnect_index(self, key, paths, source):
+        saved = self.remembered_frames.get(self.field(key))
+        if not saved or not paths or input_path(source) != saved[0]:
+            return None
+        for index, path in enumerate(paths):
+            if path.name == saved[1]:
+                return index
+        return min(saved[2], len(paths) - 1)
+
+    def import_inputs(self, selections, *, reconnect=False):
         self.check_idle()
         w = self.window
         if any(self.network(key) for key in selections):
@@ -128,14 +151,19 @@ class LiveInputs:
                 raise ValueError('双 SLM 新序列的名称和数量不匹配；请用“导入图像…”一起选择两路匹配输入。')
             # If only one path changed, also display frame 1 of its paired device.
             candidates.update(pair)
-        prepared = {key: w.prepare_frame(key, 0, values, path=paths[0])
+        index = 0
+        if reconnect:
+            indices = [self.reconnect_index(key, paths, selections[key]) for key, paths in candidates.items()]
+            if indices[0] is not None and all(i == indices[0] for i in indices):
+                index = indices[0]
+        prepared = {key: w.prepare_frame(key, index, values, path=paths[index])
                     for key, paths in candidates.items()}
         attempted = []
         try:
             for key, paths in candidates.items():
                 if key in w.devices:
                     attempted.append(key)
-                    w.devices[key].show(paths[0], values, calibration=True)
+                    w.devices[key].show(paths[index], values, calibration=True)
         except Exception as failure:
             restore_errors = []
             for key in attempted:
@@ -148,14 +176,14 @@ class LiveInputs:
                 raise RuntimeError(f'导入显示失败：{failure}；' + '；'.join(restore_errors)) from failure
             raise
         for key, paths in candidates.items():
-            w.paths[key], w.indices[key] = paths, 0
+            w.paths[key], w.indices[key] = paths, index
             if key in w.devices and key != 'dmd':
                 with Image.open(paths[0]) as image:
                     w.devices[key].source_size = image.size
             spin = getattr(w, key + 'FrameSpinBox')
             with QtCore.QSignalBlocker(spin):
                 spin.setRange(1, len(paths))
-                spin.setValue(1)
+                spin.setValue(index + 1)
             getattr(w, key + 'TotalFramesLabel').setText(f'/ {len(paths)}')
             self.tests.pop(key, None)
             w.publish_frame(key, prepared[key])
@@ -164,7 +192,7 @@ class LiveInputs:
             if w.settings is not None:
                 w.settings[self.field(key)] = text
         w.update_actions()
-        w.statusBar().showMessage('已导入并显示第一张图像；未触发采集。')
+        w.statusBar().showMessage(f'已显示第 {index + 1} 张图像；未触发采集。')
 
     def initialize(self):
         w = self.window
@@ -184,12 +212,25 @@ class LiveInputs:
             if not any(text.strip() for text in selections.values()):
                 continue
             try:
-                self.import_inputs(selections)
+                self.import_inputs(selections, reconnect=True)
             except Exception as exc:
                 for target in group:
                     label = getattr(w, target + 'FrameInfoLabel')
                     label.setText('输入未加载 · 保持全黑（悬停查看原因）')
                     label.setToolTip(str(exc))
+        for key in keys:
+            field = self.field(key)
+            saved = self.remembered_tests.get(field)
+            if not saved:
+                continue
+            source = getattr(w, field).text().strip()
+            if saved[0] != (input_path(source) if source else None) or not saved[1][1].is_file():
+                continue
+            if source and not w.paths[key]:
+                continue
+            self.display_test_file(key, *saved[1], read_values(w))
+            self.tests[key] = saved[1]
+            self.initial_black.discard(key)
 
     def choose_test(self, key, *_):
         w = self.window
@@ -282,6 +323,10 @@ class LiveInputs:
         w.devices[key].show(path, values, calibration=True)
         w.publish_frame(key, prepared)
         self.tests[key] = (description, path)
+        if initialize:
+            self.initial_black.add(key)
+        else:
+            self.initial_black.discard(key)
         getattr(w, key + 'FrameInfoLabel').setText(
             '未加载输入图像 · 全屏零灰度' if initialize else f'测试图案：{description} · 未触发采集')
         w.update_actions()
@@ -303,17 +348,20 @@ class LiveInputs:
         paths = self.window.paths[key]
         return paths[self.window.indices[key]] if paths else ''
 
+    def display_test_file(self, key, name, path, values):
+        w = self.window
+        values = self.test_values(key, values, name)
+        prepared = w.prepare_frame(key, 0, values, path=path)
+        w.devices[key].show(path, values, calibration=True)
+        w.publish_frame(key, prepared)
+        getattr(w, key+'FrameInfoLabel').setText(f'测试图案：{name} · 未触发采集')
+
     def restore_display(self, key, values):
         w = self.window
         if key in self.tests:
             # Restore the exact displayed pattern, even if holography parameters
             # have since changed. Regeneration is an explicit menu action.
-            name,path=self.tests[key]
-            values=self.test_values(key,values,name)
-            prepared=w.prepare_frame(key,0,values,path=path)
-            w.devices[key].show(path,values,calibration=True)
-            w.publish_frame(key,prepared)
-            getattr(w,key+'FrameInfoLabel').setText(f'测试图案：{name} · 未触发采集')
+            self.display_test_file(key, *self.tests[key], values)
         elif not w.paths[key]:
             self.show_test(key,'全黑',restoring=True)
         else:

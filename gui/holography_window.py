@@ -20,6 +20,10 @@ class HolographyWindow(QtWidgets.QDialog):
     def __init__(self, controller):
         super().__init__(controller.window)
         uic.loadUi(str(TOOLS_ROOT/'ui'/'HolographyWindow.ui'), self)
+        self.contentLogSplitter.setStretchFactor(0, 1)
+        self.contentLogSplitter.setStretchFactor(1, 0)
+        self.contentLogSplitter.setCollapsible(0, False)
+        self.contentLogSplitter.setSizes([1100, 280])
         self.setWindowFlag(QtCore.Qt.WindowContextHelpButtonHint, True)
         self.help_dialog = None
         self.help_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence('F1'), self)
