@@ -52,6 +52,13 @@ def apply_values(window, values):
         raise ValueError('配置 values 必须是 JSON 对象。')
     controls = editors(window)
     values = dict(values)
+    for prefix in ('ccd', 'toupcam'):
+        old_key = prefix + 'PreviewIntervalSpinBox'
+        if old_key in values:
+            interval_ms = values.pop(old_key)
+            if type(interval_ms) is not int or not 1 <= interval_ms <= 1000:
+                raise ValueError(f'配置字段 {old_key} 的毫秒值无效：{interval_ms!r}')
+            values.setdefault(prefix + 'PreviewRateSpinBox', 1000 / interval_ms)
     values.pop('ccdDetailAutoOpenCheckBox', None)  # Retired automatic page switching.
     if values.get('ccdZoomComboBox') == '1:1 像素':
         values['ccdZoomComboBox'] = '跟随第三页视野'
@@ -61,7 +68,7 @@ def apply_values(window, values):
                           'dmdWhiteLevelSpinBox': 65535.0,
                           'slmCaptureSourceComboBox': 'SLM 同步采集：关闭',
                           'slmCaptureSettleSpinBox': 0.5,
-                          'ccdPreviewIntervalSpinBox': 33}.items():
+                          'ccdPreviewRateSpinBox': 60, 'toupcamPreviewRateSpinBox': 60}.items():
         if name in controls:
             values.setdefault(name, default)
     if values.get('dmdEnabledCheckBox', False) and values.get('f4321EnabledCheckBox', False):

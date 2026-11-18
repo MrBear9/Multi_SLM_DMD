@@ -143,7 +143,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.outputDirectoryEdit.textChanged.connect(lambda text: self.capturePathLabel.setText('保存目录：' + text))
         self.poll_timer = QtCore.QTimer(self)
         self.poll_timer.timeout.connect(self.poll_camera)
-        self.poll_timer.start(self.ccdPreviewIntervalSpinBox.value())
         self.preview_fps_timer = QtCore.QTimer(self)
         self.preview_fps_timer.setInterval(1000)
         self.preview_fps_timer.timeout.connect(self.update_preview_fps)
@@ -160,6 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if config_path:
             apply_values(self, read_configuration(config_path))
         self.toupcam.update_interval()
+        self.poll_timer.start()
         self.toupcamRoiWidget.setEnabled(self.toupcamRoiCheckBox.isChecked())
         self.sync_transform_values()
         self.update_dmd_labels()

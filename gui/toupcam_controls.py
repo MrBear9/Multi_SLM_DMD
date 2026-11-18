@@ -23,7 +23,7 @@ class ToupControls(QtCore.QObject):
         w.toupcamEnumerateButton.clicked.connect(lambda: self.enumerate())
         w.toupcamDllPathEditBrowseButton.clicked.connect(lambda: w.browse('toupcamDllPathEdit'))
         w.toupcamDllPathEdit.textEdited.connect(self.invalidate_devices)
-        for control in (w.ccdPreviewIntervalSpinBox, w.toupcamPreviewIntervalSpinBox):
+        for control in (w.ccdPreviewRateSpinBox, w.toupcamPreviewRateSpinBox):
             control.valueChanged.connect(self.update_interval)
 
     def select(self, prefix, checked):
@@ -37,7 +37,8 @@ class ToupControls(QtCore.QObject):
 
     def update_interval(self, *_):
         w = self.window
-        w.poll_timer.setInterval(camera_value(read_values(w), 'PreviewIntervalSpinBox', 33))
+        rate_hz = camera_value(read_values(w), 'PreviewRateSpinBox', 60)
+        w.poll_timer.setInterval(round(1000 / rate_hz))
 
     def invalidate_devices(self, *_):
         self.devices = []
